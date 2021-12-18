@@ -1,0 +1,31 @@
+% 2021-12-18
+% 该样式包参考了lshort-zh-cn-style.sty的编排。
+\ProvidesPackage{localstyle}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% localstyle 调用的宏包
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% ctex 宏包 2.2(2015/06/24) 或以上版本
+% ctex 宏包的字号设定会让许多固定字号的字体宏包报太多 warning，应当抑制
+% 中文正文字体使用 Fandol
+%
+\RequirePackage[zihao=false, scheme=chinese]{ctex}[2015/06/24]
+%
+% 基本工具宏包
+%
+\RequirePackage{xeCJK}           % 中文字体
+\RequirePackage{fontspec}        % 调用系统字体
+\RequirePackage{hyperref}        % 引用、书签
+
+%
+% 字体
+%
+\setmainfont{SF Pro Text}
+\setCJKmainfont{PingFang SC}
+%
+% title页设置
+%
+\title{PROJECT PR2}
+\author{Fijiisland}
+\date{\today}

@@ -1,2 +1,14 @@
 .DS_Store
 *.pdf
+*.log
+*.aux
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.idx
+*.ind
+*.ilg
+*.out
+*.synctex.gz
