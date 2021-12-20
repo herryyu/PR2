@@ -9,9 +9,9 @@
 %
 % ctex 宏包 2.2(2015/06/24) 或以上版本
 % ctex 宏包的字号设定会让许多固定字号的字体宏包报太多 warning，应当抑制
-% 中文正文字体使用 PingFang SC
+% 中文正文字体使用 fandol
 %
-\RequirePackage[zihao=false, scheme=chinese]{ctex}[2015/06/24]
+\RequirePackage[zihao=false, scheme=chinese, fontset=fandol]{ctex}[2015/06/24]
 %
 % 基本工具宏包
 %
@@ -23,19 +23,27 @@
 %
 % 定义
 %
-\def\boldred#1{{\color[rgb]{0.51,0.094,0.1}{#1}}}
-\def\mkbaresec#1{\section*{\boldred{#1}}}
-\def\mkpar{\par\vspace{1ex}}
+\newcommand{\refred}[1]{{\color[rgb]{0.51,0.0,0.07}{\textit{#1}}}}
+\newcommand{\boldred}[1]{{\color[rgb]{0.51,0.094,0.1}{#1}}}
+\newcommand{\mkbaresec}[1]{\section*{\boldred{#1}}}
+\newcommand{\mkpar}[1]{\par\vspace{#1ex}}
+\newcommand{\mknote}[1]{\begin{center}
+    \fbox{\begin{minipage}{37em}
+        \begin{center}
+            \textbf{{\color[gray]{0.4}{\LARGE 注释}}}
+            \begin{flushleft}
+                #1
+            \end{flushleft}
+        \end{center}
+    \end{minipage}}
+\end{center}}
 %
-% 行间距、页面样式
+% 页面细节样式
 %
-\linespread{1.2}
-\geometry{inner=1in,outer=1.25in}
-%
-% 字体
-%
-\setmainfont{SF Pro Text}
-\setCJKmainfont{PingFang SC}
+\setlength{\fboxsep}{1.2em}         % 水平边框Box内边距
+\setlength{\parindent}{0pt}         % 段首行缩进为0
+\linespread{1.2}                    % 行间距为1.2*1.2
+\geometry{inner=1in,outer=1.25in}   % 靠近书脊边距较小，适合书籍等双面文档
 %
 % titlepage
 %
