@@ -1,0 +1,37 @@
+\chapter{第一章\\系统程序员也可拥有很棒的东西}
+
+% 可封装
+\begin{quote}
+    “在某些背景下------例如，若Rust的目标是在角逐中比别的语言快2甚至10倍，则这是一个不成则败的事情。这
+    就如同在硬件市场中一样，决定了一个系统在市场中的命运”
+    \begin{flushright}
+        ------\ttred{Graydon Hoare}
+    \end{flushright}
+\end{quote}
+\begin{quote}
+    “现在所有电脑都是并行化的...并行编程\textbf{才是}真正的编程。”
+    \begin{flushright}
+        ------Michael McCool et al., 《结构化并行编程》
+    \end{flushright}
+\end{quote}
+\begin{quote}
+    “TrueType解析器的缺陷被国家级攻击者作为监视用途；所有软件都是安全敏感的”
+    \begin{flushright}
+        ------\ttred{Andy Wingo}
+    \end{flushright}
+\end{quote}
+
+我们将上述的三则引用作为缘由，从而选择翻开本书。不过让我们先从一个谜题讲起。下面的C程序的功能是什么呢？
+\begin{lstlisting}[language=c]
+    int main(int argc, char **argv) {
+        unsigned long a[1];
+        a[3] = 0x7ffff7b36cebUL;
+        return 0;
+    }
+\end{lstlisting}
+\mkpar{1}
+今天早上，该程序在Jim的笔记本电脑上的输出为：
+\begin{quote}
+    undef: Error: .netrc file is readable by others.\\
+    under: Remove password or make file unreadable by others.
+\end{quote}
