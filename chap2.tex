@@ -1,3 +1,294 @@
 % Fijiisland
 % 2021-12-29
 \chapter{Rust之旅}
+
+Rust给类似于本书的图书作者提出了挑战：使该门语言具有鲜明个性的并不是能在第一页就展现出的某些具体、惊人的特性，而是
+它所有部分均被设计为可顺畅地协同工作，以实现我们在上一章所列出的目标：安全、高性能的系统编程。该门语言的各子部分在其
+它剩余子部分的背景下均有着最合乎情理的存在。
+
+\medskip
+因此，与其每次交涉一个语言特性，我们毋宁准备了几个小而美的程序导学；每个程序均在上下文中介绍了一些该门语言的更多特性：
+
+\smallskip
+\begin{itemize}
+    \item 作为热身，我们有一个能通过其命令行参数做简单运算的程序，且带有单元测试。它展示了Rust的核心类型并介绍了特
+    型（traits）。 
+    \item 接着，我们会构建一个网络服务器。我们将使用一个第三方库来控制HTTP细节，并引入字符串处理，闭包以及错误处理。
+    \item 我们的第三个程序将绘制一个美丽的分形图，将运算分配在多线程之间以提高速度。它包含一个泛型函数示例，其说明了
+    如何处理类似于像素缓存的东西，并展示Rust对于并发的支持。
+    \item 最后，我们将展示一个强大的命令行工具，它能以正则表达式处理文件。此部分展现了Rust标准库处理文件的工具，以及
+    最常用的正则表达式第三方库。
+\end{itemize}
+
+\smallskip
+Rust通过最小化性能损耗来预防未定义行为的承诺，对该门语言系统各部分设计影响深远，涉及从类似vector和string这样的标准
+数据结构，到Rust程序使用第三方库的方式等，对于如何对此管理妥当的细节涵盖于全书上下。而现在，我们想向你说明Rust是一门
+相当能干且令人愉悦的语言。
+
+\medskip
+当然了，首先你得在你的电脑上安装Rust。
+
+\mksec{rustup与Cargo}
+安装Rust的最佳方式是使用\texttt{rustup}。请前往\itred{https://rustup.rs}并根据里面的指示操作。
+
+\medskip
+或者你可以访问\ttred{Rust官方网站}以获取Linux、macOS或Windows的预编译包。Rust也被集成在某些操作系统发行版中。我
+们更青睐\texttt{rustup}，因为它是管理Rust工具链安装的工具，类似于Ruby的RVM或Node的NVM。比如说，当Rust发布新版本时，
+你可以简单地键入\texttt{rustup update}来进行升级。
+
+\medskip
+不管怎样，当你安装好之后，有三个新命令应该能在你的命令行中可用：
+
+\smallskip
+\begin{minted}{bash}
+    $ cargo --version
+    cargo 1.49.0 (d00d64df9 2020-12-05)
+    $ rustc --version
+    rustc 1.49.0 (e1884a8e3 2020-12-29)
+    $ rustdoc --version
+    rustdoc 1.49.0 (e1884a8e3 2020-12-29)
+\end{minted}
+
+\smallskip
+这里的\texttt{\$}是命令提示符；在Windows上，它会是\texttt{C:$\backslash$>}或其它类似的东西。我们在这段命令行抄录中
+运行了三个已安装的命令，让其各自反馈它是什么版本。我们对这些命令依次解释：
+
+\smallskip
+\begin{itemize}
+    \item \texttt{cargo}是Rust的编译管理器，包管理器以及通用工具。你可以使用Cargo创建一个新项目，构建并运行你的程序，并
+    管理你的代码所依赖的任何外部库。
+    \item \texttt{rustc}是Rust编译器。通常我们让Cargo来帮助调用编译器，但是有时直接运行它也很有用。
+    \item \texttt{rustdoc}是Rust文档工具。如果你以适当形式在代码注释中编写文档，\texttt{rustdoc}可以根据它们构建出
+    有着漂亮格式的HTML页面。就像\texttt{rustc}，我们通常让Cargo为我们运行\texttt{rustdoc}。
+\end{itemize}
+
+\smallskip
+为方便起见，Cargo能创建一个新的Rust包，它包含一些被安排妥当的标准元数据：
+
+\smallskip
+\begin{minted}{bash}
+    $ cargo new hello
+        Created binary (application) 'hello' package
+\end{minted}
+
+\smallskip
+该命令创建了一个名叫\textit{hello}的新包目录，用于构建一个命令行可执行文件。
+
+\medskip
+观察该包的顶层目录：
+
+\smallskip
+\begin{minted}{bash}
+    $ cd hello
+    $ ls -la
+    total 24
+    drwxr-xr-x. 4  jimb jimb 4096 Sep 22 21:09 .
+    drwx------. 62 jimb jimb 4096 Sep 22 21:09 ..
+    drwxrwxr-x. 6  jimb jimb 4096 Sep 22 21:09 .git
+    -rw-rw-r--. 1  jimb jimb    7 Sep 22 21:09 .gitignore
+    -rw-rw-r--. 1  jimb jimb   88 Sep 22 21:09 Cargo.toml
+    drwxrwxr-x. 2  jimb jimb 4096 Sep 22 21:09 src
+\end{minted}
+
+\smallskip
+可以看到Cargo创建了文件\textit{Cargo.toml}来保存该包的元数据。此时这个文件里还没有太多东西：
+
+\smallskip
+\begin{minted}{toml}
+    [package]
+    name = "hello"
+    version = "0.1.0"
+    authors = ["You <you@example.com>"]
+    edition = "2018"
+    
+    # See more keys and their definitions at 
+    # https://doc.rust-lang.org/cargo/reference/manifest.html
+    
+    [dependencies]
+\end{minted}
+
+\smallskip
+如果程序在任何时候需要依赖别的库，我们只需将它们记录在此文件中，Cargo将对这些库的下载、构建以及升级进行接管。我们会在第八章中
+讨论\texttt{Cargo.toml}文件的细枝末节。
+
+\medskip
+对于我们包的使用，Cargo已经通过\texttt{git}版本控制系统设置好了，该系统创建了一个\textit{.git}元数据子目录以及\textit{.gitignore}文件。
+你可以在命令行中向\texttt{cargo new}传递参数\texttt{--vcs none}来让Cargo跳过这一步骤。
+
+\medskip
+\textit{src}子目录包含着实际的Rust代码：
+
+\smallskip
+\begin{minted}{bash}
+    $ cd src
+    $ ls -l
+    total 4
+    -rw-rw-r--. 1 jimb jimb 45 sep 22 21:09 main.rs
+\end{minted}
+
+\smallskip
+Cargo似乎已着手为我们编写程序了，因为文件\textit{main.rs}包含以下文本：
+
+\smallskip
+\begin{minted}{rust}
+    fn main() {
+        println!("Hello, world!");
+    }
+\end{minted}
+
+\smallskip
+在Rust中，你甚至不需要自己来写“Hello world!”程序。另外这便是一个Rust模版程序的大小：两个文件，总共十三行代码。
+
+\medskip
+我们可以在该包中的任意目录下调用\texttt{cargo run}命令来构建并运行我们的程序：
+
+\smallskip
+\begin{minted}{bash}
+    $ cargo run
+        Compiling hello v0.1.0 (/home/jimb/rust/hello)
+        Finished dev [unoptimized + debuginfo] target(s) in 0.28s
+        Running `/home/jimb/rust/hello/target/debug/hello`
+    Hello, world!
+\end{minted}
+
+\smallskip
+此处Cargo调用了Rust编译器\texttt{rustc}，紧接着运行由它编译的可执行文件。Cargo将可执行文件置于该包顶层的\textit{target}
+子目录下：
+
+\smallskip
+\begin{minted}{bash}
+    $ ls -l ../target/debug
+    total 580
+    drwxrwxr-x. 2 jimb jimb   4096 sep 22 21:37 build
+    drwxrwxr-x. 2 jimb jimb   4096 sep 22 21:37 deps
+    drwxrwxr-x. 2 jimb jimb   4096 sep 22 21:37 examples
+    -rwxrwxr-x. 1 jimb jimb 576632 sep 22 21:37 hello
+    -rw-rw-r--. 1 jimb jimb    198 sep 22 21:37 hello.d
+    drwxrwxr-x. 2 jimb jimb     68 sep 22 21:37 incremental
+    $ ../target/debug/hello
+    Hello, world!
+\end{minted}
+
+\smallskip
+结束时，Cargo可以帮我们清理生成文件：
+
+\smallskip
+\begin{minted}{bash}
+    $ cargo clean
+    $ ../target/debug/hello
+    bash: ../target/debug/hello: No such file or directory
+\end{minted}
+
+\mksec{Rust函数}
+Rust的语法被故意设计得不具备原创性。如果你熟悉C，C++，Java或者JavaScript，你也许能通过一个Rust程序来找到答案。
+下面是一个计算两整形数之间最大公约数的函数，它使用了欧几里得算法（Euclid's algorithm）。你可以将这段代码加到\textit{src/main.rs}的末尾：
+
+\smallskip
+\begin{minted}{rust}
+    fn gcd(mut n: u64, mut m: u64) -> u64 {
+        assert!(n != 0 && m != 0);
+        while m != 0 {
+            if m < n {
+                let t = n;
+                m = n;
+                n = t;
+            }
+            m = m % n;
+        }
+        n
+    }
+\end{minted}
+
+\smallskip
+关键字\texttt{fn}（读作``fun''）引入一个函数。这里，我们定义一个叫做\texttt{gcd}的函数，其两个参数\texttt{n}和\texttt{m}的类
+型为\texttt{u64}，即无符号64位整数。\texttt{->}符号在返回值类型之前：表示该函数返回一个\texttt{u64}值。四个空格的缩进属于Rust
+的标准形式。
+
+\medskip
+Rust的机器整型命名反映了它们的大小和符号性：\texttt{i32}是一个32位有符号整数；\texttt{u8}是一个8位无符号整数（被用作``byte''，字
+节值），等等。\texttt{isize}与\texttt{usize}类型储存同指针大小的有符号与无符号数，在32位平台上长度为32 bits，在64位平台上长度为
+64 bits。Rust同样有两种浮点类型，即\texttt{f32}与\texttt{f64}，它们分别是是IEEE单/双精度浮点类型，就像C和C++里的\texttt{float}
+与\texttt{double}。
+
+\medskip
+默认情况下，变量只要被初始化，其值便不能被修改，但若将关键字\texttt{mut}（读作``mute'', mutable缩写）置于参数\texttt{n}和\texttt{m}
+之前，将允许函数体对它们赋值。实际上，大多数变量都不会被二次赋值；在阅读代码时，含关键字\texttt{mut}的变量确实能起到提示作用。
+
+\medskip
+该函数体由一个\texttt{assert!}宏调用起头，以验证两个参数均不为零。\texttt{!}字符将其标记为宏调用，而非函数调用。类似于C和C++里的
+\texttt{assert}宏，Rust的\texttt{assert!}会检查其参数是否为true，若非则终止该程序并附带一条包含未通过检查源码的位置信息；此类突
+然的终止被称为\textit{panic}。无论程序如何被编译，Rust总是会检查断言，而不像C与C++那样能跳过断言。同时存在一个\texttt{debug\_assert!}
+宏，当追求程序速度而将其编译时，断言检查会被跳过。
+
+\medskip
+该函数的核心是包含\texttt{if}和赋值语句的\texttt{while}循环。不像C与C++，Rust不要求为条件表达式加括号，但需要在它们控制的语句周围
+加大括号。
+
+\medskip
+\texttt{let}关键字声明一个局部变量，就像我们函数里的\texttt{t}。只要Rust能推导出\texttt{t}如何被使用，就无须标注它的类型。在该函数中，
+适配\texttt{t}的类型仅为与\texttt{n}和\texttt{m}匹配的\texttt{u64}。Rust仅在函数体内进行类型推导：你必须将函数参数和返回值的类型
+标注出来，就像上面那样。若想具体说明\texttt{t}的类型，我们可以这么写：
+
+\smallskip
+\begin{minted}{rust}
+    let t: u64 = m;
+\end{minted}
+
+Rust有\texttt{return}关键字，但\texttt{gcd}函数并不需要它。如若一个函数体以一个不带分号的表达式作为结尾，那么该表达式即为该函数的返回值。
+事实上，任意被大括号包围的代码块均能被用作表达式。比如说，以下为一个打印一条信息并取出\texttt{x.cos()}的值作为其自身值的表达式：
+
+\smallskip
+\begin{minted}{rust}
+    {
+        println!("evaluating cos x");
+        x.cos()
+    }
+\end{minted}
+
+在Rust中，当程序控制流即将离开函数时，典型做法是使用该形式来创建函数的值，然后在函数中间用\texttt{return}关键字显式
+地提前返回。
+
+\mksec{编写并运行单元测试}
+Rust该门语言内建得有对于测试的简单支持。要测试我们的\texttt{gcd}函数，我们可以将以下代码添加到\textit{src/main.rs}
+末尾：
+
+\smallskip
+\begin{minted}{rust}
+    #[test]
+    fn test_gcd() {
+        assert_eq!(gcd(14, 15), 1);
+        assert_eq!(gcd(2 * 3 * 5 * 11 * 17, 
+                       3 * 7 * 11 * 13 * 19),
+                    3 * 11);
+    }
+\end{minted}
+
+\smallskip
+这里我们定义了名叫\texttt{test\_gcd}的函数，它调用\texttt{gcd}并检验其是否返回正确值。定义顶端的\texttt{\#[test]}
+将\texttt{test\_gcd}标记为一个测试函数以使其被正常编译流程忽略掉，但当我们用\texttt{cargo test}命令来运行程序时，它
+会被自动包含并调用。我们可以将测试函数放在源代码树的任何位置，置于它们所执行代码的旁边，\texttt{cargo test}会对其自动收
+集并全部运行。
+
+\medskip
+\texttt{\#[test]}标记是属性（\textit{attribute}）的一个示例。属性是一种以额外信息来标注函数和其它声明的开放式系统，就
+像C++与C\#中的属性（attributes），或Java里的注解（annotations）。它们被用来控制编译器警告与代码样式检查、有条件地包含需
+被编译的代码（类似C与C++里的\#ifdef）、告诉Rust如何与其它语言编写的代码进行交互等等。我们以后将看到更多的属性示例。
+
+\medskip
+现在我们已为章首创建的\textit{hello}包增添了\texttt{gcd}和\texttt{test\_gcd}定义，并位于该包的某个子树目录下，可以
+像下面这样运行测试：
+
+\smallskip
+\begin{minted}{bash}
+    $ cargo test
+        Compiling hello v0.1.0 (/home/jimb/rust/hello)
+        Finished test [unoptimized + debuginfo] target(s) in 0.23s
+        Running /home/jimb/rust/hello/target/debug/deps/hello-851e09d2c4fdf6f4
+
+    running 1 test
+    test test_gcd ... ok
+
+    test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+\end{minted}
+
+\mksec{处理命令行参数}

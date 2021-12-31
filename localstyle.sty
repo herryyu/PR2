@@ -19,7 +19,8 @@
 \RequirePackage{hyperref}        % 引用、书签
 \RequirePackage{geometry}        % 行间距
 \RequirePackage{color}           % 设置颜色
-\RequirePackage{listings}        % 代码高亮
+\RequirePackage{xcolor}          % 高级颜色
+\RequirePackage{minted}          % 代码高亮
 %
 % 定义
 %
@@ -55,12 +56,7 @@
 \author{Fijiisland}
 \date{\today}
 %
-% package listings
+% minted
 %
-\lstset{
-    basicstyle=\ttfamily,                                % 等宽字体
-    keywordstyle=\boldred,                               % 设定关键字颜色
-    commentstyle=\it\color[RGB]{0,96,96},                % 设置代码注释的格式
-    stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},   % 设置字符串格式
-    showstringspaces=false,                              % 不显示字符串中的空格
-}
+\setminted{fontsize=\small,baselinestretch=1}
+\usemintedstyle{xcode}
