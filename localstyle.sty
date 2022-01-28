@@ -15,26 +15,45 @@
 %
 % 基本工具宏包
 %
-\RequirePackage{fontspec}        % 调用系统字体
-\RequirePackage{hyperref}        % 引用、书签
-\RequirePackage{geometry}        % 行间距
-\RequirePackage{color}           % 设置颜色
-\RequirePackage{xcolor}          % 高级颜色
-\RequirePackage{minted}          % 代码高亮
+\RequirePackage{fontspec}            % 调用系统字体
+\RequirePackage{geometry}            % 行间距
+\RequirePackage{color}               % 设置颜色
+\RequirePackage{xcolor}              % 高级颜色
+\RequirePackage{minted}              % 代码高亮
+\RequirePackage{graphicx}            % 插图
+\RequirePackage{caption}             % 说明文字
+%
+% fontspec & xeCJK
+%
+\setmainfont{Egyptian 505}
+% minted
+%
+\setminted{fontsize=\footnotesize,baselinestretch=1}
+\usemintedstyle{xcode}
+%
+% graphicx
+%
+\graphicspath{{figures/}}
+\renewcommand{\thefigure}{\thechapter-\arabic{figure}}
+%
+% caption
+%
+\captionsetup{font=footnotesize,skip=5pt,labelsep=period}
 %
 % 定义
 %
-\newcommand{\myred}{\color[rgb]{0.51,0.0,0.07}}
-\newcommand{\boldred}{\color[rgb]{0.51,0.094,0.1}}
-\newcommand{\ttred}[1]{{\myred{#1}}}
-\newcommand{\itred}[1]{\ttred{\textit{#1}}}
-\newcommand{\boldredtxt}[1]{{\boldred{#1}}}
+\newcommand{\mytextit}[1]{{\fontspec{Atenea Egyptian Italic}#1}} % 英文斜体
+\newcommand{\myred}{\color[rgb]{0.51,0.0,0.07}}                  % 红色
+\newcommand{\boldred}{\color[rgb]{0.51,0.094,0.1}}               % 深红色
+\newcommand{\redtxt}[1]{{\myred{#1}}}                            % 红色文本
+\newcommand{\reditxt}[1]{\redtxt{\mytextit{#1}}}                 % 红色斜体文本
+\newcommand{\boldredtxt}[1]{{\boldred{#1}}}                      % 深红色文本
 \newcommand{\mksec}[1]{\section{\boldred{#1}}}
 \newcommand{\mkpar}[1]{\par\vspace{#1ex}}
 \newcommand{\mknote}[1]{\begin{center}
     \fbox{\begin{minipage}{37em}
         \begin{center}
-            \textbf{{\color[gray]{0.4}{\LARGE 注释}}}
+            \textbf{{\color[gray]{0.4}{\LARGE 批注}}}
             \begin{flushleft}
                 #1
             \end{flushleft}
@@ -53,10 +72,5 @@
 % titlepage
 %
 \title{PROJECT PR2}
-\author{Fijiisland}
+\author{Instinct Wild}
 \date{\today}
-%
-% minted
-%
-\setminted{fontsize=\small,baselinestretch=1}
-\usemintedstyle{xcode}

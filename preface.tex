@@ -5,7 +5,7 @@
 Rust是一门为系统编程而生的语言。
 
 \medskip
-然而在如今，绝大多数正在工作的程序员对于系统编程并不熟悉，那么便需要对其进行一些解释了，至今它仍是我们做任何事的基础。
+然而在如今，绝大多数正在工作的程序员对于系统编程并不熟悉，那么便需要对其进行一些解释了，因为至今它仍是我们做任何事的基础。
 
 \medskip
 你合上了笔记本电脑。操作系统会感知到，并中止所有正在运行的程序，熄灭屏幕，最后让电脑进入睡眠。过了一会儿，你又打开了
@@ -60,7 +60,7 @@ C\#，Java，Python，JavaScript或者是其它东西，那么本书也适合你
 位于第\boldredtxt{四、五}章节。我们建议按顺序通读本书前五章。
 
 \medskip
-第\boldredtxt{六}至第\boldredtxt{十}章涵盖了该门语言的基础知识：表达式（\boldredtxt{第六章}）、错误处理（\boldredtxt{第七章}）、程序包
+第\boldredtxt{六}至第\boldredtxt{十}章涵盖了该门语言的基础知识：表达式（\boldredtxt{第六章}）、错误处理（\boldredtxt{第七章}）、包
 和模块（\boldredtxt{第八章}）、结构体（\boldredtxt{第九章}）以及枚举和模式（\boldredtxt{第十章}）。对这些章进行跳跃式阅读没问题，但一
 定别跳过错误处理这章，相信我们。
 
@@ -80,7 +80,7 @@ Rust能够允许你将你的自定义类型整合进该语言本身。\boldredtx
 以下排版惯例被用于本书中：
 
 \medskip
-意大利斜体 --- \textit{Italic}
+意大利斜体 --- \mytextit{Italic}
     \begin{quote}
         表示新术语、网址、电子邮件地址、文件名以及文件拓展名。
     \end{quote}
@@ -99,7 +99,7 @@ Rust能够允许你将你的自定义类型整合进该语言本身。\boldredtx
     \begin{quote}
         表示需要被替换的文本，由来自用户的值或由上下文确定的值提供。
     \end{quote}
-\mknote{该框体代表一个一般注释。}
+\mknote{该框体代表一个一般批注。}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -107,7 +107,7 @@ Rust能够允许你将你的自定义类型整合进该语言本身。\boldredtx
 补充材料（示例代码、编程练习等）可于下方网址下载
 
 \smallskip
-\itred{https://github.com/ProgrammingRust.}
+\reditxt{https://github.com/ProgrammingRust.}
 
 \smallskip
 本书是为了帮你完成工作的。一般来说，若示例代码由本书提供，你可以将它用于你的项目和文档中。若非大量地复制本书中的代码，那么
@@ -115,15 +115,15 @@ Rust能够允许你将你的自定义类型整合进该语言本身。\boldredtx
 需要取得授权；回复问题时提及本书并引用示例代码不需要取得授权；将本书中大量代码纳入你的产品文档中也不需要取得授权。
 
 \medskip
-我们不强制要求，但也欢迎你在进行引用时注明出处。出处通常包含书名、作者、出版商以及书籍ISBN号。例如：\textit{"Programmi
-ng Rust,Second Edition by Jim Blandy, Jason Orendorff, and Leonora F.S. Tindall(O'Reilly). Copyright 2
+我们不强制要求，但同时欢迎你在进行引用时注明出处。出处通常包含书名、作者、出版商以及书籍ISBN号。例如：
+\mytextit{"Programming Rust,Second Edition by Jim Blandy, Jason Orendorff, and Leonora F.S. Tindall(O'Reilly). Copyright 2%
 021 JimBlandy, Leonora F.S. Tindall, and Jason Orendorff, 978-1-492-05259-3."}
 
 \medskip
 若你认为你对于示例代码的使用脱离了合理范畴，或是不属于上述的授权论列，请尽情通过邮箱联系我们：
 
 \smallskip
-\itred{permissions@oreilly.com}
+\reditxt{permissions@oreilly.com}
 \smallskip
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -134,7 +134,7 @@ ng Rust,Second Edition by Jim Blandy, Jason Orendorff, and Leonora F.S. Tindall(
 \medskip
 我们拥有独一无二的专家和革新者组成的庞大网络，他们通过图书、文章、会议和我们的在线学习平台分享他们的知识和经验。O'Reilly的
 在线学习平台允许你按需访问现场培训课程、深入的学习路径、交互式编程环境，以及O'Reilly和200多家其他出版商提供的大量文本和视
-频资源。对于更多信息，请访问\itred{http://oreilly.com}。
+频资源。对于更多信息，请访问\reditxt{http://oreilly.com}。
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -158,22 +158,22 @@ ng Rust,Second Edition by Jim Blandy, Jason Orendorff, and Leonora F.S. Tindall(
         \smallskip
         707-829-0104（传真）
     \end{quote}
-欢迎访问本书主页，我们列出了勘误表、示例以及其它额外信息。请访问\itred{https://oreil.ly/programming-rust-2e}。
+欢迎访问本书主页，我们列出了勘误表、示例以及其它额外信息。请访问\reditxt{https://oreil.ly/programming-rust-2e}。
 
 \medskip
-通过发送电邮至\itred{bookquestions@oreilly.com}以提出关于本书的评论或者技术问题。
+通过发送电邮至\reditxt{bookquestions@oreilly.com}以提出关于本书的评论或者技术问题。
 
 \medskip
-访问\itred{http://www.oreilly.com}获得更多有关我们的书籍和课程的信息。
+访问\reditxt{http://www.oreilly.com}获得更多有关我们的书籍和课程的信息。
 
 \medskip
-在Facebook上找到我们: \itred{http://facebook.com/oreilly}
+在Facebook上找到我们: \reditxt{http://facebook.com/oreilly}
 
 \medskip
-在Twitter上关注我们: \itred{http://twitter.com/oreillymedia}
+在Twitter上关注我们: \reditxt{http://twitter.com/oreillymedia}
 
 \medskip
-在Youtube上关注我们: \itred{http://youtube.com/oreillymedia}
+在Youtube上关注我们: \reditxt{http://youtube.com/oreillymedia}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
