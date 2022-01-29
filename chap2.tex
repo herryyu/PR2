@@ -310,7 +310,7 @@ Rust该门语言内建得有对于测试的简单支持。要测试我们的\tex
 个名字，一个trait也必须被引入作用域才能提供方法以便使用。我们将在第十一章中详细讨论traits。
 
 \medskip
-第二个\texttt{use}声明引入\texttt{std::env}模块，它提供了一些有用的函数和类型，用于与执行环境进行交互，这包含\texttt{args}函数，它
+第二个\texttt{use}声明引入\texttt{std::env}模块\mytextit{module}，它提供了一些有用的函数和类型，用于与执行环境进行交互，这包含\texttt{args}函数，它
 使我们能访问程序的命令行参数。
 
 \medskip
@@ -1510,10 +1510,324 @@ Haskell中的相似符号进行建模的。
 \medskip
 我们并没有在这里展示出我们{\bfseries{不应该}}写出的Rust程序。我们在本章中看到的代码正确地将缓冲区划分到了线程之间，然而在这些代码上有很多容易出
 错的小细节，一旦改变可能使程序无法正确工作（从而引入数据竞争）；这些改变一个都通过不了Rust编译器的静态检查。C或C++编译器则会愉快地助你探索具有
-微妙数据竞争程序的广辽空间\footnote{译者注：作者真的怀着一颗黑C和C++的心而着笔。}；而Rust会在有问题时预先告诉你。
+微妙数据竞争程序的广辽空间；而Rust会在有问题时预先告诉你。
 
 \medskip
 在第\redtxt{四}和第\redtxt{五}章中，我们会描述Rust的内存安全规则。\redtxt{第十九章}会解释这些规则是如何确保并发的“无污染性”的。
 
 \bigskip
 \mksec{文件系统和命令行工具}
+Rust已在命令行工具的世界中创出一席之地。作为一个现代，安全并且快速的系统编程语言，它提供一个工具箱，使程序员能用其构建流畅
+的命令行接口，以对现有的工具进行功能复制或扩展。譬如，命令\texttt{bat}相当于一个支持语法高亮的\texttt{cat}且内置对分页
+工具的支持，\texttt{hyperfine}可自动对任何能通过命令或管线运行的东西进行基准测试。
+
+\medskip
+虽然这些复杂的东西超出了本书范畴，但Rust可助你轻松涉足符合人体工程学命令行应用程序的世界。本节中，我们将向你展示如何构建
+你自己的查找-替换工具，并配备多彩的输出与友好的错误消息。
+
+\medskip
+开始工作，我们要创建一个新Rust项目：
+\begin{minted}{bash}
+    $ cargo new quickreplace
+         Created binary (application) `quickreplace` package
+    $ cd quickreplace
+\end{minted}
+
+\smallskip
+对于我们的程序，其需要两个外部crates：用以在终端里生成彩色输出的\texttt{text-colorizer}，以及具备实际查找-替换功能
+的\texttt{regex}。和之前一样，我们将这些crates放进\mytextit{Cargo.toml}以告诉\texttt{cargo}我们需要它们：
+\begin{minted}{toml}
+    [package]
+    name = "quickreplace"
+    version = "0.1.0"
+    edition = "2018"
+
+    # See more keys and their definitions 
+    # at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+    [dependencies]
+    text-colorizer = "1"
+    regex = "1"
+\end{minted}
+
+\smallskip
+像上面这样到达\texttt{1.0}版本的Rust crates遵循“语义版本号”规则：在主版本号\texttt{1}改变之前，较新版本应始终作为先
+前版本的可兼容扩展。所以如果我们用\texttt{1.2}版本的某crate来测试程序，那么该程序应仍能在该crate的\texttt{1.3}，
+\texttt{1.4}等版本下工作；但是\texttt{2.0}版本也许会引入不兼容的更改。当我们在\mytextit{Cargo.toml}文件中简单地对
+一个crate的\texttt{"1"}版本进行请求时，Cargo将使用该crate在\texttt{2.0}之前的最新可用版本。
+
+\medskip
+\subsection{命令行接口}
+该程序的接口十分简单。它接收四个参数：一个用以查找的字符串（或正则表达式），一个用以替换其的字符串（或正则表达式），输入
+文件的名称，以及输出文件的名称。我们将从\mytextit{main.rs}开始，它附带一个包含这些参数的结构体：
+\begin{minted}{rust}
+    #[derive(Debug)]
+    struct Arguments {
+        target: String,
+        replacement: String,
+        filename: String,
+        output: String,
+    }
+\end{minted}
+
+\smallskip
+属性\texttt{\#[derive(Debug)]}告诉编译器生成一些额外的代码，以方便我们在\texttt{println!}中用\texttt{\{:?\}}格
+式化\texttt{Arguments}结构体。
+
+\medskip
+一旦用户输入错误的参数数字，按照惯例应打印一条简洁的消息来解释如何使用该程序。我们将用一个叫\texttt{print\_usage}的简
+单函数来实现，然后将\texttt{text-colorizer}中的所有东西引进来，方便我们增添一些颜色：
+\begin{minted}{rust}
+    use text_colorizer::*;
+
+    fn print_usage() {
+        eprintln!("{} - change occurrences of one string into another",
+                "quickreplace".green())
+        eprintln!("Usage: quickreplace <target> <replacement> <INPUT> <OUTPUT>");
+    }
+\end{minted}
+
+\smallskip
+简单地在字符串尾部加上\texttt{.green()}将以字面意义产生一个由合适的ANSI转义码包覆的新字符串，以在终端模拟器中显示为
+绿色。然后新字符串在被打印之前会被插入到剩余消息当中。
+
+\medskip
+现在我们可以对该程序的参数进行收集与处理：
+\begin{minted}{rust}
+    use std::env;
+
+    fn parse_args() -> Arguments {
+        
+        let args: Vec<String> = env::args().skip(1).collect();
+
+        if args.len() != 4 {
+            print_usage();
+            eprintln!("{} wrong number of arguments: expected 4, got {}.",
+                "Error:".red().bold(), args.len());
+            std::process::exit(1);
+        }
+
+        Arguments { 
+            target: args[0].clone(), 
+            replacement: args[1].clone(),
+            filename: args[2].clone(), 
+            output: args[3].clone() 
+        }
+    }
+\end{minted}
+
+\smallskip
+为取得用户输入的参数，我们使用与先前例子相同的\texttt{args}迭代器。\texttt{.skip(1)}跳过该迭代器的首值（即被运行的
+该程序的名称），因此结果仅包含命令行参数。
+
+\medskip
+方法\texttt{collect()}生成一个存储参数的\texttt{Vec}。接着我们检查参数个数是否正确，若不是，则打印一条消息并以一条
+错误消息退出。我们再次对消息的一部分进行上色，并使用\texttt{.bold()}来使文本更粗。若参数个数正确，便将它们置入一个
+\texttt{Arguments}结构体，并将其返回。
+
+\medskip
+接着我们将加上\texttt{main}函数，且仅调用\texttt{parse\_args}然后打印输出：
+\begin{minted}{rust}
+    fn main() {
+        let args = parse_args();
+        println!("{:?}", args);
+    }
+\end{minted}
+
+\smallskip
+此时，我们可以运行程序来观察它是否吐出正确的错误信息：
+\begin{minted}{bash}
+    $ cargo run
+     Updating crates.io index
+    Compiling libc v0.2.115
+    Compiling memchr v2.4.1
+    Compiling lazy_static v1.4.0
+    Compiling regex-syntax v0.6.25
+    Compiling aho-corasick v0.7.18
+    Compiling atty v0.2.14
+    Compiling colored v2.0.0
+    Compiling text-colorizer v1.0.0
+    Compiling regex v1.5.4
+    Compiling quickreplace v0.1.0 (/home/jimb/quickreplace)
+    Finished dev [unoptimized + debuginfo] target(s) in 9.23s
+    Running `target/debug/quickreplace`
+    quickreplace - change occurrences of one string into another
+    Usage: quickreplace <target> <replacement> <INPUT> <OUTPUT>
+    Error: wrong number of arguments: expected 4, got 0.
+\end{minted}
+
+\smallskip
+若你向该程序提供一些参数，它会打印出\texttt{Arguments}结构体的表示形式：
+\begin{minted}{bash}
+    $ cargo run "find" "replace" file output
+        Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+         Running `target/debug/quickreplace find replace file output`
+    Arguments { target: "find", replacement: "replace", filename: "file", output: 
+    "output" }
+\end{minted}
+
+\smallskip
+这是非常好的开头！参数被正确识别并被置入\texttt{Arguments}结构体的正确位置。
+
+\medskip
+\subsection{文件读写}
+接下来，我们需要用一些方法来实际从文件系统获得数据以便我们进行处理，并在处理完成时将数据写回去。Rust有一套处理输入输出的
+强劲工具，标准库设计者知道文件读写操作十分常见，所以他们有意将其设计得简易。我们需要做的仅是引入\texttt{std::fs}模块，
+之后我们便能使用\texttt{read\_to\_string}和\texttt{write}函数：
+\begin{minted}{rust}
+    use std::fs;
+\end{minted}
+
+\smallskip
+\texttt{std::fs::read\_to\_string}返回一个\texttt{Result<String, std::io::Error>}。如果该函数执行成功，它
+将生成一个\texttt{String}。如果它执行失败，它会生成一个\texttt{std::io::Error}，其为用来表示I/O问题的标准库类型。
+类似地，\texttt{std::fs::write}返回一个\texttt{Result<(), std::io::Error>}：若成功则为一个\texttt{()}单元
+类型，若失败则是一个相同的错误。
+\begin{minted}{rust}
+    fn main() {
+        let args = parse_args();
+        
+        let data = match fs::read_to_string(&args.filename) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("{} failed to read from file '{}': {:?}",
+                        "Error:".red().bold(), args.filename, e);
+                std::process::exit(1);
+            }
+        };
+
+        match fs::write(&args.output, &data) {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("{} failed to write to file '{}': {:?}",
+                        "Error:".red().bold(), args.filename, e);
+                std::process::exit(1);
+            }
+        }
+    }
+\end{minted}
+
+\smallskip
+这里我们使用事先写好的\texttt{parse\_args}函数，并将获得的文件名传递给\texttt{read\_to\_string}和\texttt{write}
+。这些函数输出上的\texttt{match}对错误进行优雅的处理，并附带一点显眼的颜色来引起用户的注意。
+
+\medskip
+有了此更新的\texttt{main}函数，我们可以运行该程序并观察，当然，新旧文件的内容是完全相同的：
+\begin{minted}{bash}
+    $ cargo run "find" "replace" Cargo.toml Copy.toml
+       Compiling quickreplace v0.1.0 (/home/jimb/rust/quickreplace)
+        Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+         Running `target/debug/quickreplace find replace Cargo.toml Copy.toml`
+\end{minted}
+
+\smallskip
+该程序{\bfseries{确实}}读入了输入文件\mytextit{Cargo.toml}，也确实写入了输出文件\mytextit{Copy.toml}，但由于
+我们还未写任何实际执行查找和替换的代码，那么输出文件在内容上不会有任何变动。我们可以用\texttt{diff}命令简单地进行检查，
+其并不会检测到任何区别：
+\begin{minted}{bash}
+    $ diff Cargo.toml Copy.toml
+\end{minted}
+
+\smallskip
+\subsection{查找并替换}
+本程序的最后一步是实现它的实际功能：查找并进行替换。为此，我们将使用\texttt{regex} crate，它可以编译并执行正则表达式。
+该crate提供名叫\texttt{Regex}的结构体，代表一个经过编译的正则表达式。\texttt{Regex}有一个\texttt{replace\_all}
+方法，正如它的名字：它在字符串中搜索所有匹配正则表达式的项并将它们各自替换为给定的替换字符串。我们可以将这个逻辑置入一个函数
+中：
+\begin{minted}{rust}
+    use regex::Regex;
+    fn replace(target: &str, replacement: &str, text: &str)
+        -> Result<String, regex::Error> {
+        let regex = Regex::new(target)?;
+        Ok(regex.replace_all(text, replacement).to_string())
+    }
+\end{minted}
+
+\smallskip
+注意该函数的返回类型。就像我们之前使用的标准库函数，\texttt{replace}返回一个\texttt{Result}，只是这次的错误类型由
+\texttt{regex} crate提供。
+
+\medskip
+\texttt{Regex::new}编译用户提供的正则式，若给定一个非法字符串它会执行失败。正如\texttt{Mandelbrot}程序那样，一旦
+\texttt{Regex::new}失败我们便使用\texttt{?}进行短路，不过在此例中该函数返回一个针对\texttt{regex} crate的错误类
+型。当正则式编译完成，其\texttt{replace\_all}方法将替换\texttt{text}中任何与给定的替换字符串匹配的项。
+
+\medskip
+若\texttt{replace\_all}查找成功，其返回一个匹配项均被替换为给定文本的新\texttt{String}。否则，
+\texttt{replace\_all}返回一个指向源文本的指针，以避免不必要的内存分配和复制。然而在此例中，我们总是希望得到一份独立拷贝
+，所以无论匹配成功与否，我们用\texttt{to\_string}方法取得包含源文本的\texttt{String}，且该\texttt{String}由
+\texttt{Result::Ok}所包覆。
+
+\medskip
+现在，是时候将新函数纳入我们的\texttt{main}代码中了：
+\begin{minted}{rust}
+    fn main() {
+        let args = parse_args();
+        
+        let data = match fs::read_to_string(&args.filename) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("{} failed to read from file '{}': {:?}",
+                          "Error:".red().bold(), args.filename, e);
+                std::process::exit(1);
+            }
+        };
+    
+        let replaced_data = match replace(&args.target, &args.replacement, &data) 
+        {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("{} failed to replace text: {:?}",
+                          "Error:".red().bold(), e);
+                std::process::exit(1);
+            }    
+        };
+    
+        match fs::write(&args.output, &replaced_data) {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("{} failed to write to file '{}': {:?}",
+                          "Error:".red().bold(), args.filename, e);
+                std::process::exit(1);
+            }
+        }
+    }
+\end{minted}
+
+\smallskip
+有了这最后一步，该程序便就位了，并且你可以对它进行测试：
+\begin{minted}{bash}
+    $ echo "Hello, world" > test.txt
+    $ cargo run "world" "Rust" test.txt test-modified.txt
+       Compiling quickreplace v0.1.0 (/home/jimb/rust/quickreplace)
+        Finished dev [unoptimized + debuginfo] target(s) in 0.88s
+         Running `target/debug/quickreplace world Rust test.txt test-modified.txt`
+    $ cat test-modified.txt
+    Hello, Rust
+\end{minted}
+
+\smallskip
+当然了，错误处理也已经就位，优雅地向用户报告错误：
+\begin{minted}{bash}
+    $ cargo run "[[a-z]" "0" test.txt test-modified.txt
+        Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+         Running `target/debug/quickreplace '[[a-z]' 0 test.txt test-modified.txt`
+    Error: failed to replace text: Syntax(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ~
+    regex parse error:
+        [[a-z]
+        ^
+    error: unclosed character class
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ~
+    )
+\end{minted}
+
+\smallskip
+当然，在该示例程序中并未展示更多相关特性，但是基础功能都在。你已了解如何对文件进行读写，传递并显示错误，以及为输出上色来
+提升终端用户体验。
+
+\medskip
+未来的章节将探索更多高级应用程序开发技术，从数据收集与用迭代器进行函数式编程，到用于注重效率的高并发场景的异步编程，不过首
+先，你需移步至下一章---Rust基础数据类型，并在其中打下坚实基础。
