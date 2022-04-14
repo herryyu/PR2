@@ -22,6 +22,10 @@
 \RequirePackage{minted}              % 代码高亮
 \RequirePackage{graphicx}            % 插图
 \RequirePackage{caption}             % 说明文字
+\RequirePackage{tabularx}            % 表格自动换行
+\RequirePackage{booktabs}            % 表格线
+\RequirePackage{makecell}            % 表格内换行
+\RequirePackage{supertabular}        % 跨页表格
 %
 % fontspec & xeCJK
 %
@@ -29,12 +33,11 @@
 % minted
 %
 \setminted{fontsize=\footnotesize,baselinestretch=1}
-%\usemintedstyle{xcode}
+\usemintedstyle{xcode}
 %
 % graphicx
 %
 \graphicspath{{figures/}}
-\renewcommand{\thefigure}{\thechapter-\arabic{figure}}
 %
 % caption
 %
@@ -42,6 +45,8 @@
 %
 % 定义
 %
+\renewcommand{\thefigure}{\thechapter-\arabic{figure}}
+\renewcommand{\thetable}{\thechapter-\arabic{table}}
 \newcommand{\mytextit}[1]{{\fontspec{Atenea Egyptian Italic}#1}} % 英文斜体
 \newcommand{\myred}{\color[rgb]{0.51,0.0,0.07}}                  % 红色
 \newcommand{\boldred}{\color[rgb]{0.51,0.094,0.1}}               % 深红色
@@ -63,7 +68,7 @@
 %
 % 页面细节样式
 %            
-\setcounter{secnumdepth}{0}
+\setcounter{secnumdepth}{0}         % 不显示章节编号
 \setlength{\fboxsep}{1.2em}         % 水平边框Box内边距
 \setlength{\parindent}{0pt}         % 段首行缩进为0
 \linespread{1.2}                    % 行间距为1.2*1.2
@@ -72,5 +77,5 @@
 % titlepage
 %
 \title{PROJECT PR2}
-\author{Instinct Wild}
+\author{Translated by Hengyiyu}
 \date{\today}

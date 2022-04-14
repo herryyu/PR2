@@ -1,10 +1,338 @@
 % Fijiisland
-% 2021-12-29
+% 2022-01-30
 \chapter{基础类型}
 
 \begin{quote}
-    世界上有许多许多种类的书籍，这是很有意义的，因为同样有很多很多类型的人，并且每个人都想读一些不一样的东西。
+    世界上有很多很多种类的书籍，这是很有意义的，因为同样有很多很多类型的人，并且每个人都想读一些不一样的东西。
     \begin{flushright}
         ------\redtxt{Lemony Sniket}
     \end{flushright}
 \end{quote}
+
+\medskip
+Rust这门语言在很大程度上是围绕它的类型进行设计的。它对高性能代码的支持起因于让开发者能选择最适合当前情形的数据表示的初衷，并
+在简单性与代价之间取得良好平衡。Rust的内存和线程安全性保障同样依赖于其的类型系统的健壮性，而Rust的灵活性则源于其泛型类型和
+traits。
+
+\medskip
+本章涵盖Rust用来表示值的基础类型。这些源码级别的类型有着具体的机器级对应物，具有可预测的性能与代价。尽管Rust并不保证它会依
+照你的要求将事情一点不差地呈现出来，但当它对你的需求做出偏离时，唯一的可能是这种偏离是一个可靠的改进。
+
+\medskip
+相比于像JavaScript或Python这样的动态类型语言，Rust要求你提前做出更多计划。你必须拼写出函数的参数类型和返回值，结构体的字
+段，以及一些其它结构。不过，Rust的两个特性会让这些事情变得没你想的那么麻烦：
+\begin{itemize}
+\item 鉴于你拼写出的类型，Rust的类型推导\mytextit{type inference}会为你解决其余大部分问题。在实际情况中，通常只有一种
+类型适用于给定的变量或表达式；在这种情况下，Rust允许你撇去，或者说省略\mytextit{elide}该类型。举个例子，你可以在函数中将
+每个类型均写出来，比如像这样：
+\begin{minted}{rust}
+    fn build_vector() -> Vec<i16> {
+        let mut v: Vec<i16> = Vec::<i16>::new();
+        v.push(10i16);
+        v.push(20i16);
+        v
+    }
+\end{minted}
+
+\smallskip
+但是这样看起来重复且杂乱。鉴于该函数的返回类型，很明显\texttt{v}一定是一个\texttt{Vec<i16>}，即一个元素类型为16位有符
+号整数的vector；而其它类型均不匹配。由此可见，该vector的各元素一定是一个\texttt{i16}。这正是Rust应用类型推导的原因，它
+允许你转而写为：
+\begin{minted}{rust}
+    fn build_vector() -> Vec<i16> {
+        let mut v = Vec::new();
+        v.push(10);
+        v.push(20);
+        v
+    }
+\end{minted}
+
+\smallskip
+这两种定义是完全等价的，并且Rust会为两种写法生成相同的机器码。类型推导极大地提升了动态类型语言的可读性，同时使得其在编译期仍
+能捕获类型错误。
+
+\item 函数可以是泛型\mytextit{generic}的：一个单独的函数可以服务于很多不同种类的值。
+
+\medskip
+在Python和JavaScript中，所有函数均自然地以下述方式工作：一个函数可操作任何具有该函数所需属性和方法的值。（这种特征通常被称作
+\mytextit{duck typing}: 如果叫起来像一只鸭子，那么它就是一只鸭子。\footnote{鸭子类型，也称动态类型。}）但正是这种灵活性使得那些语言
+难以提前检测到类型错误；此时测试通常是捕捉这种错误的唯一手段。Rust的泛型函数在一定程度上给予该门语言相同的灵活性，而仍然能在编译期捕捉所有
+的类型错误。
+
+\medskip
+尽管泛型函数具有灵活性，但它们与非泛型函数具有相同的效率。比方说，为每一种整型编写一个特定的\texttt{num}函数，而非编写一个泛型版本来处理
+所有整型，这其实并没有本质的性能优势。我们将于\redtxt{第十一章}具体探讨泛型函数。
+\end{itemize}
+
+本章的其余部分自下而上地介绍了Rust的类型，从类似整型和浮点值的简单数值类型开始，接着移步到控制更多数据的类型：boxes、tuples、arrays、以
+及strings。
+
+\medskip
+这里有一份对你将在Rust中见到的各种类型的总结。\redtxt{表 3-1}展示了Rust的原始数据类型、一些极为常见的标准库类型、以及一些由用户定义的类
+型示例。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{Rust类型示例}
+    \begin{tabularx}{\linewidth}{X p{200pt} X}
+        \toprule
+        \textbf{类型} & \textbf{描述} & \textbf{值} \\
+        \midrule
+        \makecell[lt]{i8, i16, i32, i64, i128 \\ u8, u16, u32, u64, u128}
+        & 给定位宽的有/无符号整型 
+        & \makecell[lt]{42, -5i8,0x400u16, \\ 20\_922\_789\_888\_000u64, \\ 0o100i16,b'*'（u8字节\\字面量）} \\
+        
+        isize,usize 
+        & 有/无符号整型，与目标机器的地址长度相同（32 或 64 bits）
+        & \makecell[lt]{137, -0b0101\_0010isize, \\ 0xffff\_fc00usize} \\
+
+        f32,f64
+        & IEEE 浮点数字，单/双精度
+        & \makecell[lt]{1.61803, 3.14f32, \\ 6.0221e23f64} \\
+        
+        bool & 布尔值 & true,false \\
+
+        char
+        & Unicode字符，32位宽
+        & '*', '\textbackslash n', '字', '\textbackslash x7f', '\textbackslash u\{CA0\}' \\
+        
+        (char, u8, i32) & Tuple（元组）: 允许装填混合类型 & ('\%',0x7f,-1) \\
+
+        () & "Unit"（单元）（空的tuple）& () \\
+
+        struct S \{ x: f32, y: f32 \} & 命名字段结构体 & S \{ x: 120.0, y: 209.0 \} \\
+        
+        struct T (i32, char); & 形似tuple的结构体 & T(120, 'X') \\
+        
+        struct E; & 形似unit的结构体；无任何字段 & E \\
+
+        \makecell[lt]{enum Attend \{ On\\Time, Late(u32) \}} & 枚举，代数数据类型 & \makecell[lt]{Attend::Late(5),\\ Attend::OnTime} \\
+        
+        Box<Attend> & Box: 拥有指向位于堆上值的指针 & Box::new(Late(15)) \\
+
+        \texttt{\&}i32, \texttt{\&}mut i32 & 共享与可变引用：不具备所有权的指针的寿命不能超过其指代的对象（待修订） & \texttt{\&}s.y, \texttt{\&}mut v \\
+
+        
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+本章涵盖了以上大多数类型，除了以下几个：
+\begin{itemize}
+    \item \texttt{struct}类型被置于单独的章节，\redtxt{第九章}。
+    \item 枚举类型被置于单独的章节，\redtxt{第十章}。
+    \item 我们将在\redtxt{第十一章}描述trait对象
+    \item 我们会在此章描述\texttt{String}和\texttt{\&str}的要点，但会在\redtxt{第十七章}提供更多细节。
+    \item \redtxt{第十四章}会介绍函数及闭包类型。
+\end{itemize}
+
+\bigskip
+\mksec{固定宽度数值类型}
+Rust类型系统的基础是固定宽度数值类型的集合，它们被选来匹配几乎所有现代处理器用硬件直接实现的类型。
+
+\medskip
+固定宽度数值类型会溢出或者损失精度，但是它们能胜任大部分应用，并且可比以高精度整数和精确有理数这类表示法快千百倍。若你需要用到这类数值
+表示，它们均在\texttt{num} crate中得以被支持。
+
+\medskip
+Rust数值类型的命名遵循一个规律，即拼写出他们的比特宽度，以及它们使用的表示法（\redtxt{表 3-2}）。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{Rust数值类型}
+    \begin{tabularx}{\linewidth}{X X X X}
+        \toprule
+        \textbf{大小（比特）} & \textbf{无符号整型} & \textbf{有符号整型} & \textbf{浮点} \\
+        \midrule
+        8  & u8  & i8  & \\
+        16 & u16 & i16 & \\
+        32 & u32 & i32 & f32 \\
+        64 & u64 & i64 & f64 \\
+        128 & u128 & i128 & \\
+        机器字 & usize & isize & \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+这里，机器字为一个值，它表示代码所运行的目标机器上的一个地址的大小，32或64位。
+
+\medskip
+\subsection{整数类型}
+Rust的无符号整数类型用它们的整个范围来表示正值和零（\redtxt{表 3-3}）。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{Rust无符号整数类型}
+    \begin{tabularx}{\linewidth}{X X}
+        \toprule
+        \textbf{类型} & \textbf{范围} \\
+        \midrule
+        u8 & 0 到 $2^8-1$（0 到 255）\\
+        u16 & 0 到 $2^{16}-1$ （0 到 65,535） \\
+        u32 & 0 到 $2^{32}-1$ （0 到 4,294,967,295） \\
+        u64 & 0 到 $2^{64}-1$ （0 到 18,446,744,073,709,551,615，或18 quintillion） \\
+        u128 & 0 到 $2^{128}-1$ （0 到约 $3.4 \times 10^{38}$） \\
+        usize & 0 到 $2^{32}-1$ 或 $2^{64}-1$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Rust的有符号整数类型则用到补码表示法，其使用与对应无符号类型相同的位模式来覆盖一段包含正值和负值的范围
+（\redtxt{表 3-4}）。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{Rust有符号整数类型}
+    \begin{tabularx}{\linewidth}{X X}
+        \toprule
+        \textbf{类型} & \textbf{范围} \\
+        \midrule
+        i8 & $-2^7$ 到 $2^7-1$（-128 到 127）\\
+        i16 & $-2^{15}$ 到 $2^{15}-1$ （-32,768 到 32,767） \\
+        i32 & $-2^{31}$ 到 $2^{31}-1$ （-2,147,483,648 到 2,147,483,647） \\
+        i64 & $-2^{63}$ 到 $2^{63}-1$ （-9,223,372,036,854,775,808 到 9,223,372,036,854,775,807） \\
+        i128 & $-2^{127}$ 到 $2^{127}-1$ （约为 $-1.7 \times 10^{38}$ 到 $+1.7 \times 10^{38}$） \\
+        isize & $-2^{31}$ 到 $2^{31}-1$ 或 $-2^{63}-1$ 到 $2^{63}-1$\\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+Rust使用\texttt{u8}类型表示字节值。比方说，从二进制文件或者套接字读取数据会产生一个\texttt{u8}值流。
+
+\medskip
+与C和C++不同，Rust将字符与数值类型进行区别对待：一个\texttt{char}既不是一个\texttt{u8}，也不是一个\texttt{u32}（虽然它的长度
+为32比特）。我们将在“\redtxt{字符}”这节讨论Rust的\texttt{char}类型。
+
+\medskip
+类型\texttt{usize}和\texttt{isize}类似于C和C++中的\texttt{size\_t}和\texttt{ptrdiff\_t}。它们的精度与目标机器上地址空间的大小
+相匹配：它们在32位架构上为32比特长，在64位架构上为64比特长。Rust要求数组索引为\texttt{usize}值。代表数组或向量大小或者对某些数据结构元素
+数量进行计数的值也通常为\texttt{usize}类型。
+
+\medskip
+Rust中的整型在字面上可使用一个后缀来表征它们的类型：\texttt{42u8}是一个\texttt{u8}值，\texttt{1729isize}是一个\texttt{isize}。
+如果一个整型字面没有类型后缀，Rust会推迟确定该值类型，直到检测到正在使用该值的方式可将其确定下来：被存储于一个有着特定类型的变量中，
+被用来与另一个有着特定类型的值进行比较，或者一些类似的情景。最终，若有多个类型均可匹配且\texttt{i32}也在其中，那么Rust将默认使用它。否则，
+Rust报告一个歧义错误。
+
+\medskip
+前缀\texttt{0x}，\texttt{0o}以及\texttt{0b}分别在字面上指定十六进制、八进制和二进制。
+
+\medskip
+要使较长的数字更具可读性，你可以在数位之间安插下划线。打个比方，你可以将最大的\texttt{u32}值写为\texttt{4\_294\_967\_295}。下划线的
+确切位置并不重要，所以你可以将十六进制或二进制数分割为多个包含四个数位的组，而不是三个数位，就如\texttt{0xffff\_ffff}，或将类型后缀从数
+字中分离出来，就如\texttt{127\_u8}。\redtxt{表 3-5}绘制了一些整型字面示例。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{整型字面示例}
+    \begin{tabularx}{\linewidth}{X X X}
+        \toprule
+        \textbf{字面} & \textbf{类型} & \textbf{十进制值} \\
+        \midrule
+        116i8 & i8 到 116 \\
+        $0xcafeu32$ & u32 & 51966 \\
+        $0b0010_1010$ & 由推断得出 & 42 \\
+        $0o106$ & 由推断得出 & 70 \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+即使数值类型和\texttt{char}类型是区分开来的，Rust也的确提供了字节字面量\textit{byte literals}，即\texttt{u8}值的类字符型字面量：
+\texttt{b'X'}代表字符\texttt{X}的ASCII码，并作为一个\texttt{u8}值。比方说，因为\texttt{A}的ASCII码是65，则字面量
+\texttt{b'A'}与\texttt{65u8}是正好等价的。只有ASCII字符可以出现在字节字面量中。
+
+\medskip
+有一些字符你是不能简单地放置在单引号里的，因为那样既会造成语法歧义，又使得其难以阅读。\redtxt{表 3-6}中的字符仅能使用代记法来书写，由一个
+反斜线引入。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{要求使用代记法的符号}
+    \begin{tabularx}{\linewidth}{X X X}
+        \toprule
+        \textbf{字符} & \textbf{字节字面量} & \textbf{数值等值} \\
+        \midrule
+        单个引号，' & b'{\textbackslash}' ' & 39u8 \\
+        反斜线，{\textbackslash} & b'\textbackslash\textbackslash' & 92u8 \\
+        换行符 & b'{\textbackslash}n' & 10u8 \\
+        回车符 & b'{\textbackslash}r' & 13u8 \\
+        制表符 & b'{\textbackslash}t' & 9u8 \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+对于难以书写或阅读的字符，你可以用十六进制来替代地写出它们的代码。对于形式为\texttt{b'{\textbackslash}xHH'}的字节字面量，\texttt{HH}
+是任意的双数位十六进制数字，表示该字节的值为\texttt{HH}。比方说，你可以将ASCII码中的"escape"控制字符写为一个字节字面量
+\texttt{b'{\textbackslash}x1b'}，因为"escape"的ASCII码为27，或者十六进制的1B。由于字节字面量只是\texttt{u8}的另一种表示法，
+那么考虑一个简单数值字面量是否更具可读性：只有当你想强调值表示一个ASCII码，也许使用\texttt{b'{\textbackslash}x1b'}而不是简单的27是
+有意义的。
+
+\medskip
+你可以用\texttt{as}操作符将一个整数类型转换为另一种整数类型。我们会在“\redtxt{类型转换}”小节解释转换是如何工作的，不过这里有一些示例：
+\begin{minted}{rust}
+    assert_eq!(   10_i8  as u16,    10_u16); // 范围内
+    assert_eq! (2525_u16 as i16,  2525_i16); // 范围内
+    
+    assert_eq!(   -1_i16 as i32,    -1_i32); // 符号扩展
+    assert_eq!(65535_u16 as i32, 65535_i32); //零扩展
+
+    // 转换超出了目标类型的范围，产生的值等价于原始值对2^N进行模运算，N为目标类型
+    // 的位宽。有时这被称为“截断truncation”。
+    assert_eq!( 1000_i16 as u8,    232_u8);
+    assert_eq!(65535_u32 as i16,    -1_i16);
+
+    assert_eq!(    -1_i8 as u8,    255_u8);
+    assert_eq!(   255_u8 as i8,     -1_i8);
+\end{minted}
+
+\smallskip
+标准库提供了一些操作整形的方法。比如说：
+\begin{minted}{rust}
+    assert_eq!(2_u16.pow(4), 16);            // 指数运算
+    assert_eq!((-4_i32),abs(), 4);           // 绝对值
+    assert_eq!(0b101101_u8.count_ones(), 4); // 计数
+\end{minted}
+
+\smallskip
+你可以于在线文档中找到这些。不过请注意，文档中包含如"\texttt{i32}（原始类型）"这样关于类型自身的单独页面，以及专用于该类型的模块（请搜索
+"\texttt{std::i32}"）。
+
+\medskip
+在真实代码中，你一般不需向上面这样写出类型后缀，因为上下文会将类型确定下来。但若遇到无法确定的情况，错误信息可能会令人惊讶。打个比方，下面的
+代码无法通过编译：
+\begin{minted}{rust}
+    println!("{}", (-4).abs());
+\end{minted}
+
+\smallskip
+编译器会提出抱怨：
+\begin{minted}{text}
+    error: can't call method 'abs' on ambiguous type '{integer}'
+\end{minted}
+
+\smallskip
+这可能有点令人困惑：所有有符号整形均有\texttt{abs}方法，那么问题出在哪呢？出于技术原因，Rust需要知道一个值到底是哪种整数类型，然后才能
+调用该类型版本的方法。而只有当所有方法调用均被解析完成后，类型仍然不明确时，默认的\texttt{i32}方法才会被使用，所以这里已经太晚了，没有
+帮助。（待修订）解决方案是拼写出你想要的类型，加上后缀或者使用特定的类型函数均可：
+\begin{minted}{rust}
+    println!("{}", (-4_i32).abs());
+    println!("{}", i32::abs(-4));
+\end{minted}
+
+\smallskip
+注意，方法调用的优先级高于一元前缀运算符，所以当为负值调用方法时要格外小心。第一个语句中的\texttt{-4\_i32}周围没有括号的话，
+\texttt{-4\_i32.abs()}会将\texttt{abs}方法应用于正值\texttt{4}，并产生正值\texttt{4}，然后对其取负得到\texttt{-4}。
+
+\medskip
+\subsection{Checked, Wrapping, Saturating, and Overflowing Arithmetic}
