@@ -22,8 +22,8 @@ traits。
 相比于像JavaScript或Python这样的动态类型语言，Rust要求你提前做出更多计划。你必须拼写出函数的参数类型和返回值，结构体的字
 段，以及一些其它结构。不过，Rust的两个特性会让这些事情变得没你想的那么麻烦：
 \begin{itemize}
-\item 鉴于你拼写出的类型，Rust的类型推导\mytextit{type inference}会为你解决其余大部分问题。在实际情况中，通常只有一种
-类型适用于给定的变量或表达式；在这种情况下，Rust允许你撇去，或者说省略\mytextit{elide}该类型。举个例子，你可以在函数中将
+\item 鉴于你拼写出的类型，Rust的\textbf{类型推导}\textit{type inference}会为你解决其余大部分问题。在实际情况中，通常只有一种
+类型适用于给定的变量或表达式；在这种情况下，Rust允许你撇去，或者说省略\textit{elide}该类型。举个例子，你可以在函数中将
 每个类型均写出来，比如像这样：
 \begin{minted}{rust}
     fn build_vector() -> Vec<i16> {
@@ -51,11 +51,11 @@ traits。
 这两种定义是完全等价的，并且Rust会为两种写法生成相同的机器码。类型推导极大地提升了动态类型语言的可读性，同时使得其在编译期仍
 能捕获类型错误。
 
-\item 函数可以是泛型\mytextit{generic}的：一个单独的函数可以服务于很多不同种类的值。
+\item 函数可以是\textbf{泛型}\textit{generic}的：一个单独的函数可以服务于很多不同种类的值。
 
 \medskip
 在Python和JavaScript中，所有函数均自然地以下述方式工作：一个函数可操作任何具有该函数所需属性和方法的值。（这种特征通常被称作
-\mytextit{duck typing}: 如果叫起来像一只鸭子，那么它就是一只鸭子。\footnote{鸭子类型，也称动态类型。}）但正是这种灵活性使得那些语言
+\textit{duck typing}: 如果叫起来像一只鸭子，那么它就是一只鸭子。\footnote{鸭子类型，也称动态类型。}）但正是这种灵活性使得那些语言
 难以提前检测到类型错误；此时测试通常是捕捉这种错误的唯一手段。Rust的泛型函数在一定程度上给予该门语言相同的灵活性，而仍然能在编译期捕捉所有
 的类型错误。
 
@@ -297,7 +297,7 @@ Rust报告一个歧义错误。
 \end{minted}
 
 \smallskip
-标准库提供了一些操作整形的方法。比如说：
+标准库提供了一些操作整型的方法。比如说：
 \begin{minted}{rust}
     assert_eq!(2_u16.pow(4), 16);            // 指数运算
     assert_eq!((-4_i32),abs(), 4);           // 绝对值
@@ -322,7 +322,7 @@ Rust报告一个歧义错误。
 \end{minted}
 
 \smallskip
-这可能有点令人困惑：所有有符号整形均有\texttt{abs}方法，那么问题出在哪呢？出于技术原因，Rust需要知道一个值到底是哪种整数类型，然后才能
+这可能有点令人困惑：所有有符号整型均有\texttt{abs}方法，那么问题出在哪呢？出于技术原因，Rust需要知道一个值到底是哪种整数类型，然后才能
 调用该类型版本的方法。而只有当所有方法调用均被解析完成后，类型仍然不明确时，默认的\texttt{i32}方法才会被使用，所以这里已经太晚了，没有
 帮助。（待修订）解决方案是拼写出你想要的类型，加上后缀或者使用特定的类型函数均可：
 \begin{minted}{rust}
@@ -335,4 +335,722 @@ Rust报告一个歧义错误。
 \texttt{-4\_i32.abs()}会将\texttt{abs}方法应用于正值\texttt{4}，并产生正值\texttt{4}，然后对其取负得到\texttt{-4}。
 
 \medskip
-\subsection{Checked, Wrapping, Saturating, and Overflowing Arithmetic}
+\subsection{校验，包络，饱和与溢出算数（待修订）}
+当一个整型算数操作溢出时，Rust会在debug模式构建下引发panic。在release构建下，该操作会产生\textbf{包络}
+\textit{wraps around}：其生成的值等价于数学上正确的结果对该值范围进行取模。(实际上在C与C++中，这两种情况均不属于溢出未定义
+行为)（待修订）
+
+\medskip
+举个例子，以下代码在debug构建中会引发panic：
+\begin{minted}{rust}
+    let mut i = 1;
+    loop {
+        i *= 10; // panic：试图进行会导致溢出的乘法
+                 //（仅在debug构建中）
+    }
+\end{minted}
+
+\smallskip
+在release构建下，这个乘法运算被包络为一个负值，并且该循环会无休止地运行。
+
+\medskip
+当你不需要该默认行为，整数类型提供了方法以允许你准确说明你希望的内容。比方说，以下语句在任何构建模式均会引发panic：
+\begin{minted}{rust}
+    let mut i = 1;
+    loop {
+        // panic：乘法运算溢出（在任何构建模式下）
+        i = i.checked_mul(10).expect("multiplication overflowed");
+    }
+\end{minted}
+
+\smallskip
+这些整型数值方法分为四大类：
+
+\begin{itemize}
+    \item \textbf{校验}\textit{Checked}操作返回一个包含结果的\texttt{Option}：若数学上正确的计算结果可被表示为该类型的一个值，
+          返回\texttt{Some(v)}；如果不能，返回\texttt{None}。比方说：
+          \begin{minted}{rust}
+          // 10和20的和可被表示为一个u8。
+          assert_eq!(10_u8.checked_add(20), Some(30));
+
+          // 很不幸，100与200的和与None不等价。
+          assert_eq!(100_u8.checked_add(200), None);
+
+          // 执行加法；若溢出则引发panic。
+          let sum = x.checked_add(y).unwrap();
+
+          // 奇怪的是，有符号除法在特殊情况下也会溢出。
+          // 一个有符号 n-bit 类型可表示 -2^(n-1)，但不能表示 2^(n-1)
+          assert_eq!((-128_i8).checked_div(-1), None);
+          \end{minted}
+    \item \textbf{包络}\textit{Wrapping}操作返回的值等价于数学上正确的结果对当前值范围进行取模：
+          \begin{minted}{rust}
+          // 第一个乘积可被表示为一个\texttt{u16}
+          // 第二个则不行，所以我们需用 25000 模 2^16
+          assert_eq!(100_u16.wrapping_mul(200), 20000);
+          assert_eq!(500_u16.wrapping_mul(500), 53392);
+
+          // 有符号数操作也许会包络出一个负值
+          assert_eq!(500_i16.wrapping_mul(500), -12144);
+
+          // 在按位移动操作中，移位值将被包络并落在值可表示的大小范围之内。
+          // 所以在一个16-bit类型中进行17 bits移位，实际上会被包络为1 bit移位。
+          assert_eq!(5_i16.wrapping_shl(17), 10);
+          \end{minted}
+
+          \smallskip
+          如上所述，这便是普通算数运算符在release构建下的表现。这些方法的优点是，它们在所有构建模式下均有着相同的
+          行为。
+
+    \item \textbf{饱和}\textit{Saturating}操作返回最接近数学上正确结果且可表示的值。换句话说，返回结果会
+        “夹”在对应类型可表示的最大值与最小值之间：
+        \begin{minted}{rust}
+        assert_eq!(32760_i16.saturating_add(10), 32767);
+        assert_eq!((-32760_i16).saturating_sub(10), -32768);
+        \end{minted}
+
+        \smallskip
+        饱和除法、余数或按位移动是不存在的。
+
+    \item \textbf{溢出}\textit{Overflowing}操作返回一个tuple（\texttt{result, overflowed}），
+        \texttt{result}是函数返回的计算结果的包络版本，\texttt{overflowed}是一个表征是否发生溢出的\texttt{bool}值：
+        \begin{minted}{rust}
+            assert_eq!(255_u8.overflowing_sub(2), (253, false));
+            assert_eq!(255_u8.overflowing_add(2), (1, true));
+        \end{minted}
+
+        \smallskip
+        \texttt{overflowing\_shl}与\texttt{overflowing\_shr}的行为模式则稍有不同：它们仅当移位值大于等于类型本身的位宽时才为
+        \texttt{overflowed}返回\texttt{true}。而实际应用的移位值为用请求位移对类型的位宽进行取模的结果：
+        \begin{minted}{rust}
+            // 17位的移位值对于'u16'来说太大了，以及17模16等于1。
+            assert_eq!(5_u16.overflowing_shl(17), (10, false));
+        \end{minted}
+\end{itemize}
+
+\smallskip
+\redtxt{表 3-7}列出了遵循\texttt{checked\_, wrapping\_, saturating\_, }或者\texttt{overflowing\_}前缀命名的操作。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{操作名称}
+    \begin{tabularx}{\linewidth}{X X p{200pt}}
+        \toprule
+        \textbf{操作} & \textbf{名称后缀} & \textbf{示例} \\
+        \midrule
+        加法 & add & \texttt{100\_i8.checked\_add(27) == Some(127)} \\
+        减法 & sub & \texttt{10\_u8.checked\_sub(11) == None} \\
+        乘法 & mul & \texttt{128\_u8.saturating\_mul(3) == 255} \\
+        除法 & div & \texttt{64\_u16.wrapping\_div(8) == 8} \\
+        取余 & rem & \texttt{(-32768\_i16).wrapping\_rem(-1) == 0} \\
+        取反 & neg & \texttt{(-128\_i8).checked\_neg() == None} \\
+        绝对值 & abs & \texttt{(-32768\_i16).wrapping\_abs() == -32768} \\
+        取幂 & pow & \texttt{3\_u8.checked\_pow(4) == Some(81)} \\
+        按位左移 & shl & \texttt{10\_u32.wrapping\_shl(34) == 40} \\
+        按位右移 & shr & \texttt{40\_u64.wrapping\_shr(66) == 10} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\medskip
+\subsection{浮点类型}
+Rust提供了IEEE单/双精度浮点类型。这些类型包含正/负无穷大，互异正/负零值，以及\textbf{非数字值}\textit{not-a-number value}（\redtxt{表 3-8}）。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{IEEE单/双精度浮点类型}
+    \begin{tabularx}{\linewidth}{X X X}
+        \toprule
+        \textbf{类型} & \textbf{精度} & \textbf{范围} \\
+        \midrule
+        f32 & IEEE 单精度（至少6个小数位） & 约 $-3.4 \times 10^{38}$ 到 $+3.4 \times 10^{38}$ \\
+        f64 & IEEE 双精度（至少15个小数位） & 约 $-1.8 \times 10^{308}$ 到 $+1.8 \times 10^{308}$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+Rust的\texttt{f32}和\texttt{f64}对应C与C++里的\texttt{float}和\texttt{double}类型（在实现上支持IEEE浮点标准），Java也同样（总是使用IEEE
+浮点标准）。 
+
+\medskip
+浮点字面值的一般形式示意图如\redtxt{图3-1}所示。
+
+\smallskip
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.6]{3-1}
+    \caption{一个浮点字面值}
+\end{figure}
+
+\smallskip
+每个浮点数整数部分之后的部分是可选的，不过至少要将小数部分，幂或者类型后缀的其中之一表示出来，以便与整数字面值区分开来。小数部分也许由一个单独的
+小数点组成，所以\texttt{5.}是一个合法的浮点常量。
+
+\medskip
+若一个浮点字面值缺少类型后缀，Rust会核查上下文来看该值是如何被使用的，就像它检查整数字面值一样。如果Rust最终发现两种浮点类型均适配，它会默认选择
+\texttt{f64}。
+
+\medskip
+为了进行类型推导，Rust将整数字面值与浮点字面值视为互异类型：它永远不会将一个整数字面值推导为一个浮点类型，反之亦然。\redtxt{表 3-9}展示了一些浮点
+字面值的示例。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{浮点字面值示例}
+    \begin{tabularx}{\linewidth}{X X X}
+        \toprule
+        \textbf{字面值} & \textbf{类型} & \textbf{数学值} \\
+        \midrule
+        \texttt{-1.5625} & 由推断得出 & $-(1^9/16)$ \\
+        \texttt{2.} & 由推断得出 & $2$ \\
+        \texttt{0.25} & 由推断得出 & $1/4$ \\
+        \texttt{$1e4$} & 由推断得出 & $10,000$ \\
+        \texttt{40f32} & f32 & $40$ \\
+        \texttt{9.109\_383\_56$e$-31f64} & f64 & 约 $9.10938356 \times 10^{-31}$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+类型\texttt{f32}与\texttt{f64}均有与IEEE所要求特殊值相关联的常量，比如\texttt{INFINITY}，\texttt{NEG\_INFINITY}
+（negative infinity，负无穷），\texttt{NAN}（the not-a-number value，“非数”值），以及\texttt{MIN}和\texttt{MAX}（最大和最小的有穷值）：
+\begin{minted}{rust}
+    assert!((-1. / f32::INFINITY).is_sign_negative());
+    assert_eq!(-f32::MIN, f32::MAX);
+\end{minted}
+
+\smallskip
+\texttt{f32}与\texttt{f64}类型提供了一整套数学计算方法；比如说，\texttt{2f64.sqrt()}表示2的双精度平方根。下面是两个例子：
+\begin{minted}{rust}
+    assert_eq!(5f32.sqrt() * 5f32.sqrt(), 5.); // 依据IEEE标准，正好为5.0
+    assert_eq!((-1.01f64).floor(), -2.0);
+\end{minted}
+
+\smallskip
+多说一遍，方法调用的优先级高于前缀操作符，所以务必确保正确地用方法调用将负值用括号括起来。
+
+\medskip
+\texttt{std::f32::consts}和\texttt{std::f64::consts}模块提供了各种常用数学常量，像是\texttt{E}，\texttt{PI}以及二的平方根。
+
+\medskip
+在搜索文档时，记住有分别叫“f32（原始类型）”与“f64（原始类型）”的几页是介绍这两个类型本身的，并且有对应各类型的模块，\texttt{std::f32}和
+\texttt{std::f64}。
+
+\medskip
+就像整数那样，通常你无需在实际代码中写出浮点字面值的类型后缀，不过你若想写的话，为字面值或函数注明类型就足够了：
+\begin{minted}{rust}
+    println!("{}", (2.0_f64).sqrt());
+    println!("{}", f64::sqrt(2.0));
+\end{minted}
+
+\smallskip
+与C和C++不同，Rust几乎不会隐式地执行数值转换。如果一个函数欲接收一个\texttt{f64}参数，则传递一个\texttt{i32}值作为参数会引发错误。事实上，
+Rust甚至不会隐式地将一个\texttt{i16}值转为一个\texttt{i32}值，尽管每个\texttt{i16}值也均为一个\texttt{i32}值。但是你总能用\texttt{as}
+操作符写出\textbf{显式}\textit{explicit}转换：\texttt{i as f64}，或\texttt{x as i32}。
+
+\medskip
+隐式转换的缺失有时会使得一个Rust表达式比类似的C或C++代码更加冗长。然而，隐式整数转换有着一些公认导致bugs和安全漏洞的记录，特别是当用整数表示内存中
+某样东西的大小时，会发生意想不到的溢出。根据我们的经验，在Rust中写明数值转换的行为会使我们注意到我们原本会错过的潜在问题。
+
+\medskip
+我们于\redtxt{类型转换}一节中确切解释了转换究竟是怎样表现的。
+
+\bigskip
+\mksec{布尔类型}
+Rust的布尔类型，按照惯例有着与该类型相关的两个值，\texttt{true}和\texttt{false}。像\texttt{==}与\texttt{<}这种比较操作符会产生\texttt{bool}
+结果：\texttt{2 < 5}的值为\texttt{true}。
+
+\medskip
+许多语言对于在需要布尔值的情形下使用其它类型的值这种做法相当宽容：C与C++隐式地将字符、整数、浮点数以及指针转换为布尔值，所以它们可被直接用作\texttt{if}
+或\texttt{while}语句中的条件。Python允许将字符串、列表、字典，甚至是集合用在布尔上下文中，当这些值不为空时便将它们视为\texttt{true}。然而Rust对此
+相当严格：类似\texttt{if}和\texttt{while}的控制结构要求以\texttt{bool}表达式作为它们的条件，短路逻辑操作符\texttt{\&\&}与\texttt{||}也同样如
+此。你必须写作\texttt{if x !=0 \{ ... \}}，而不是简单的\texttt{if x \{ ... \}}。
+
+\medskip
+Rust的\texttt{as}操作符可以将\texttt{bool}转为整型：
+\begin{minted}{rust}
+    assert_eq!(false as i32, 0);
+    assert_eq!(true  as i32, 1);
+\end{minted}
+
+\smallskip
+不过，\texttt{as}不会向相反的方向转换，即从整型到\texttt{bool}。相反，你必须写出像\texttt{x != 0}的显式比较。
+
+\medskip
+即使\texttt{bool}仅需一个单独的比特来代表，Rust在内存中用了一整个字节来存储\texttt{bool}，所以你可以创建一个指向它的指针。
+
+\bigskip
+\mksec{字符}
+Rust的字符类型\texttt{char}表示一个单独的Unicode字符，并作为一个32比特值。
+
+\medskip
+Rust使用\texttt{char}类型表示孤立的单一字符，但为字符串和文本流应用的是UTF-8编码。所以，一个\texttt{String}将它的文本表示为UTF-8字节序列，而非
+字符的数组。
+
+\medskip
+字符字面值是被单引号括起来的字符，比如\texttt{'8'}或\texttt{'!'}。你可以使用全宽度的Unicode：'錆'是一个表示日语kanji或sabi的\texttt{char}
+(rust)。
+
+\medskip
+与字节字面值相同，有几个字符需用到反斜杠转义（\redtxt{表 3-10}）。
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{浮点字面值示例}
+    \begin{tabularx}{\linewidth}{X X}
+        \toprule
+        \textbf{字符} & \textbf{Rust字符字面值} \\
+        \midrule
+        单引号，' & '\texttt{\textbackslash'}' \\
+        反斜杠， \textbackslash & '\texttt{\textbackslash\textbackslash}' \\
+        换行 & '\texttt{\textbackslash{n}}' \\
+        回车 & '\texttt{\textbackslash{r}}' \\
+        制表符 & '\texttt{\textbackslash{t}}' \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+你若愿意，则可以用十六进制写出一个字符的Unicode码位：
+\begin{itemize}
+    \item 如果字符的码位在范围U+000到U+007F中（换句话说，如果它是被取于ASCII字符集），那么你可将该字符写成\texttt{'\textbackslash{xHH}'}，
+          这里的\texttt{HH}为一个两位十六进制数。比如说，字符字面值\texttt{'*'}与\texttt{'\textbackslash{x2A}'}等价，因为字符\texttt{*}
+          的码位是42，用十六进制表示便是2A。
+    \item 你可以将任何Unicode字符写为\texttt{'\textbackslash{u\{HHHHHH\}}'}的形式，此处\texttt{\texttt{HHHHHH}}为一个最高六位的十六进
+          制数，同往常一样，还可以使用下划线对数位进行分组。打个比方，字符字面值\texttt{'\textbackslash{u\{CA0\}}'}表示字符"ಠ"，其为Unicode
+          表情“不赞成的样子”"ಠ\_ಠ"中的一个Kannada字符。相同的字面值也可以被简单写作'ಠ'。
+\end{itemize}
+
+\smallskip
+一个\texttt{char}总是持有一个在范围0x000到0xD7FF或0xE000到0x10FFFF内的Unicode码位。一个\texttt{char}永不会是\textbf{代理对}
+\textit{surrogate pair}的一半（也即，一个在范围0xD800到0xDFFF内的码位），或者是一个超出Unicode码位空间的值（换句话说，大于0x10FFFF）。
+Rust使用类型系统与动态检验来确保\texttt{char}值总是落在准许的范围内。
+
+\medskip
+Rust绝不会隐式地在\texttt{char}与任何其它类型之间执行转换。你可以使用\texttt{as}转换操作符来将一个\texttt{char}转为一个整型；对于小于32比特的
+类型，字符值的高位比特会被截断：
+\begin{minted}{rust}
+    assert_eq!('*' as i32, 42);
+    assert_eq!('ಠ' as u16, 0xca0);
+    assert_eq!('ಠ' as i8, -0x60); // U+CA0被执行有符号截断，变为8比特
+\end{minted}
+
+\smallskip
+若将方向反过来，\texttt{u8}是唯一能用\texttt{as}操作符转换为\texttt{char}的类型：Rust意图仅用\texttt{as}操作符执行低代价、万无一失的转换，
+但是除了\texttt{u8}的每个整数类型均含有一些不在Unicode码位空间内的值，所以那些转换会需要运行时检查。代替地，标准库函数
+\texttt{std::char::from\_u32}可取得任意\texttt{u32}值并返回一个\texttt{Option<char>}：如果该\texttt{u32}不属于Unicode码位空间，则
+\texttt{from\_u32}返回\texttt{None}；否则它将返回\texttt{Some(c)}，此处\texttt{c}为转换得到的\texttt{char}。
+
+\medskip
+标准库提供了一些操作字符的实用方法，你可以于在线文档的“char（原始类型）”以及模块“std::char”页面查阅到它们。比方说：
+\begin{minted}{rust}
+    assert_eq!('*'.is_alphabetic(), false);
+    assert_eq!('\beta'.is_alphabetic(), true);
+    assert_eq!('8'.to_digit(), Some(8));
+    assert_eq!('ಠ'.len_utf8(), 3);
+    assert_eq!(std::char::from_digit(2, 10), Some('2'));
+\end{minted}
+
+\smallskip
+自然地，孤立的单个字符不如字符串和文本流有意思。我们将在\redtxt{“字符串类型”}中讨论Rust的标准\texttt{String}类型以及一般的文本处理。
+
+\bigskip
+\mksec{元组 Tuples}
+\textbf{元组}\textit{tuple}是一个包含混杂类型的组对，或三元组、四元组、五元组，以此类推。（因此可称为\textit{n-tuple}或
+\textit{tuple}）。你可以将元组写为一个元素序列，其由逗号分隔并被括号所包围。比方说，\texttt{("Brazil", 1995)}是一个首元素为一个静态分配字符串，
+次元素为一个整数的元组；其类型为\texttt{(\&str, i32)}。给定一个元组值\texttt{t}，你可以用\texttt{t.0}，\texttt{t.1}等来访问它的元素。
+
+\medskip
+在一定程度上，元组类似于数组：这两种类型均表示一个有序的值序列。许多编程语言对这两个概念进行了混淆或合并，但是在Rust中，它们是完全分开的。一方面，元组的每
+个元素可以有着不同的类型，然而数组的元素类型必须相同。此外，元组仅允许像\texttt{t.4}这样的常量索引。你不能写\texttt{t.i}或\texttt{t[i]}来获取第
+\texttt{i}个元素。
+
+\medskip
+Rust代码常常利用元组类型来从函数返回多个值。比方说，字符串切片的\texttt{split\_at}方法将一个字符串分割为两半并将它们同时返回，其声明像下面这样：
+\begin{minted}{rust}
+    fn split_at(&self, mid: usize) -> (&str, &str);
+\end{minted}
+
+\smallskip
+返回类型\texttt{(\&str, \&str)}是一个有着两个字符串切片的元组。你可以使用模式匹配语法来为返回值的各元素赋予一个不同的变量：
+\begin{minted}{rust}
+    let text = "I see the eigenvalue in thine eye";
+    let (head, tail) = text.split_at(21);
+    assert_eq!(head, "I see the eigenvalue ");
+    assert_eq!(tail, "in thine eye");
+\end{minted}
+
+\smallskip
+下面的代码行为与上相同，但更清晰：
+\begin{minted}{rust}
+    let text = "I see the eigenvalue in thine eye";
+    let temp = text.split_at(21);
+    let head = temp.0;
+    let tail = temp.1;
+    assert_eq!(head, "I see the eigenvalue ");
+    assert_eq!(tail, "in thine eye");
+\end{minted}
+
+\smallskip
+你还会看到元组被用作类似于极简戏剧（minimal-drama）的结构体类型。比方说，在\redtxt{第二章}中的Mandelbrot程序中，我们需要将图像的宽与高传递给负责
+对其进行绘制并写入硬盘的函数。我们可以声明一个包含\texttt{width}与\texttt{height}成员的结构体，但是对于如此显而易见的东西，这种做法还是繁琐了点，
+所以我们只需使用一个元组：
+\begin{minted}{rust}
+    /// 将尺寸由'bounds'给定的缓冲区'pixels'写入名叫'filename'的文件。
+    fn write_image(filename: &str, pixels: &[u8], bounds: (usize, usize))
+        -> Result<(), std::io::Error> 
+    { ... }
+\end{minted}
+
+\smallskip
+参数\texttt{bounds}的类型为\texttt{(usize, usize)}，一个含有两个\texttt{usize}值的元组。诚然，我们也可以写出单独的\texttt{width}与
+\texttt{height}参数，并且无论哪种形式，产生的机器代码都差不多。这是有关简洁性的考量。我们认为尺寸是一个值，而非两个，使用元组可使我们清晰表达出我们
+所想。
+
+\medskip
+另一个常用的元组类型是零元组\texttt{()}。它通常被称为\textbf{单元类型}\textit{unit type}，这是因为它只含一个值，也被写作\texttt{()}。Rust
+在无有意义的值需被传输的地方用到单元类型，不过上下文还是需要某种类型的。
+
+\medskip
+打个比方，一个不返回值的函数有着返回类型\texttt{()}。标准库的\texttt{std::mem::swap}函数无有意义的返回值；它仅交换其两个参数的值。
+\texttt{std::mem::swap}的声明内容如下：
+\begin{minted}{rust}
+   fn swap<T>(x: &mut T, y: &mut T);
+\end{minted}
+
+\smallskip
+\texttt{<T>}表示\texttt{swap}是\textbf{泛型}\textit{generic}的：你可以将它用于指向任意类型\texttt{T}的值的引用。但是该签名完全省略了\texttt{swap}
+的返回类型，这是对返回单元类型的简写：
+\begin{minted}{rust}
+    fn swap<T>(x: &mut T, y: &mut T) -> ();
+\end{minted}
+ 
+\smallskip
+类似地，我们之前提到的例子\texttt{write\_image}的返回类型为\texttt{Result<(), std::io::Error>}，表示如果哪里出错了就返回一个
+\texttt{std::io::Error}值，但若成功则不返回任何值。
+
+\medskip
+你若愿意，你可以在元组的末元素后面添加一个逗号：类型\texttt{(\&str, i32,)}与\texttt{(\&str, i32)}是等价的，表达式\texttt{("Brazil, 1985,")}
+与\texttt{("Brazil, 1985")}也同样如此。Rust始终允许在任何所用逗号之处多出一个尾部的逗号：函数参数、数组、结构体以及枚举定义等等。这对于人类读者
+来说可能有点怪怪的，不过当元素条目在一个列表的末尾被添加与移除时，它可以使差异更容易阅读（待修订）。
+
+\medskip
+为了一致性，甚至有只含单一值的元组。字面值\texttt{("lonely hearts",)}为一个含单一字符串的元组；其类型为\texttt{(\&str,)}。这里，通过值后面的逗号
+区分单一值元组与简单的插入语是非常必要的。
+
+\bigskip
+\mksec{指针类型}
+Rust中存在若干表示内存地址的类型。
+
+\medskip
+这是Rust与绝大多数有着垃圾回收的语言之间的一个很大区别。在Java中，如果\texttt{class Rectangle}包含一个\texttt{Vector2D upperLeft;}字段，则
+\texttt{upperLeft}为指向另一个单独创建的\texttt{Vector2D}对象的引用。在Java中的对象永不会在物理层面包含其它对象。
+
+\medskip
+Rust则不同。该门语言旨在将分配维持在一个最低水平。默认情况下值是嵌套的。值\texttt{(((0, 0),(1440, 900)))}被存储为四个毗邻的整数。如果你将它存进
+一个局部变量，你便得到有着四个整数那么宽的局部变量。不会有东西在堆里被分配。
+
+\medskip
+这有益于内存效率，但作为后果，当一个Rust程序需要指向其它值的值时，则必须显式地使用指针类型。好消息是，safe Rust中用到的指针类型受到了限制，以消除未定义
+行为，所以Rust中的指针相比C++来说更易于正确使用。
+
+\medskip
+我们将在这里探讨三个指针类型：引用、boxes以及unsafe指针。
+
+\medskip
+\subsection{引用}
+一个类型为\texttt{\&String}（读作 "ref String"）的值是指向一个\texttt{String}值的引用，而\texttt{\&i32}为一个指向一个\texttt{i32}的引用，
+以此类推。
+
+\medskip
+开始学习的最简单方法是将引用视作Rust的基础指针类型。运行时期间，指向一个\texttt{i32}的引用是一个持有该\texttt{i32}地址的单机器字，它也许在栈上，
+要不就在堆上。表达式\texttt{\&x}产生一个\texttt{x}的引用；在Rust专用术语中，我们说它借用一个（指向\texttt{x}的）引用
+\textit{borrows a reference}。给定一个引用\texttt{r}，则表达式\texttt{*r}表示值\texttt{r}所指物。它们很像C与C++里的\texttt{\&}与
+\texttt{*}操作符。并且，如同C指针那样，一个引用在脱离作用域之前不会自动释放任何资源。
+
+\medskip
+然而与C指针不同的是，Rust引用永不为空(null)：在safe Rust中根本无法产生一个null引用。并且不像C那样，Rust会追踪值的所有权与生命周期，所以类似悬空指针、
+双重释放以及指针作废的错误均在编译期被排除在外。
+
+\medskip
+Rust的引用有两种类型：
+
+\medskip
+\textittt{\&T}
+    \begin{quote}
+        一种不可变的共享引用。你可以同时拥有很多个指向一个给定值的共享引用，但是它们均为只读：更改它们所指值的行为是被禁止的，就像C里的
+        \texttt{const T*}。
+    \end{quote}
+\medskip
+\textittt{\&mut T}
+    \begin{quote}
+        一种可变的独占引用。你可以对它所指值进行读与修改，就像C里的\texttt{T*}。但只要该引用存在，你就不能获得此值任何其它形式的引用。事实上，你唯一
+        可以访问该值的方式是使用可变引用。
+    \end{quote}
+
+\medskip
+Rust使用共享引用与可变引用之间的这种对立来执行“单写者或多读者(single writer \textit{or} multiple readers)”规则：要么你可以对值进行读与写，
+要么它可被任意数量的读者共享，但是它们绝不能同时进行读或写。这种由编译期检查强制执行的分离方式，是Rust安全保障的核心。\redtxt{第五章}介绍了Rust引用安全
+使用规则。
+
+\medskip
+\subsection{Boxes}
+在堆中分配值的最简单方式为使用\texttt{Box::new}：
+\begin{minted}{rust}
+    let t = (12, "eggs");
+    let b = Box::new(t); // 在堆中分配一个元组
+\end{minted}
+ 
+\smallskip
+\texttt{t}的类型为\texttt{(i32, \&str)}，则\texttt{b}的类型为\texttt{Box<(i32, \&str)>}。\texttt{Box::new}该调用在堆上分配了足够的内存以
+容纳该元组。比如说，当\texttt{b}脱离作用域时，内存会立即被释放，除非\texttt{b}已经被\textbf{移动}\textit{moved}了---（待修订）。移动操作对于Rust处理在堆
+上分配的值是至关重要的；我们将在\redtxt{第四章}阐释这些细节。
+
+\medskip
+\subsection{裸指针}
+Rust同样拥有裸指针类型\texttt{*mut T}和\texttt{*const T}。裸指针实际上就像C++里的指针。使用裸指针是unsafe的，因为Rust并不试图追踪它所指向
+的东西。比方说，裸指针可能为空，或者它们可能指向已被释放的内存，又或许该内存包含的是一个不同类型的值。总之，C++中的所有经典指针错误都可供你欣赏。
+
+\medskip
+然而，你可以仅在一个\texttt{unsafe}块里对裸指针进行解引用。\texttt{unsafe}块是Rust高级语言特性的可选机制，其安全性取决于你。如果你的代码中不
+包含\texttt{unsafe}块（或者那些\texttt{unsafe}块所做的事情是被正确编写了的），那么我们贯穿本书所强调的安全性保证仍旧有效。更多细节请查看
+\redtxt{第22章}。
+
+\bigskip
+\mksec{数组，向量，以及切片}
+Rust有三种代表内存中一串连续值的类型：
+    \begin{itemize}
+        \item 类型\texttt{[T; N]}表示一个有\texttt{N}个值的数组，各值的类型为\texttt{T}。数组的大小是一个在编译期就确定的常量，且为类型的
+              一部分；你无法缩小数组或为数组增加新元素。
+        \item 类型\texttt{Vec<T>}，称作\textbf{元素为T的向量}\textit{vector of T}s，是一个动态分配、类型为T的可增长值序列。向量的元素存
+              活于堆上，所以你可以任意调整向量的大小：向它们推入新元素、将其它向量附加到它们尾部、删除元素等等。
+        \item 类型\texttt{\&[T]}与\texttt{\&mut [T]}，称作\textbf{元素为T的共享切片}\textit{shared slice of T}s以及
+              \textbf{元素为T的可变切片}\textit{mutable slice of T}s，是对一系列元素的引用，这些元素是一些其它值的一部分，比如一个数组
+              或向量。你可以将切片看作一个指向其第一个元素的指针，同时还有一个从该点开始可以访问的元素的数量。可变切片\texttt{\&mut [T]}允许你
+              读或修改元素，但是不能被共享；共享切片\texttt{\&[T]}允许你在几个读者间共享访问权，不过不允许你修改元素。
+    \end{itemize}
+
+\smallskip
+给定这三种类型中任何一种的值\texttt{v}，表达式\texttt{v.len()}给出\texttt{v}的元素数量，并且\texttt{v[i]}表示\texttt{v}的第\texttt{i}
+个元素。首元素为\texttt{v[0]}，且末元素为\texttt{v[v.len() - 1]}。Rust会检查\texttt{i}是否总是在该范围内；如果不是，则该表达式会panic。
+\texttt{v}的长度可以为零，此时任何对其索引的尝试均会引发panic。\texttt{i}的类型必须为\texttt{usize}；你不能用任何其它整数类型作为索引。
+
+\medskip
+\subsection{数组}
+有数种编写数组值的方法。最简单的便是在方括号内写出一系列值：
+\begin{minted}{rust}
+    let lazy_caterer: [u32; 6] = [1, 2, 4, 7, 11, 16];
+    let taxonomy = ["Animalia", "Arthropoda", "Insecta"];
+
+    assert_eq!(lazy_caterer[3], 7);
+    assert_eq!(taxonomy.len(), 3);
+\end{minted}
+ 
+\smallskip
+对于被填充了一些值的长数组这种普通情况，你可以写为\texttt{[\textit{V}; \textit{N}]}，此处\textittt{V}为各元素应具有的值，且\textittt{N}为
+长度。比方说，\texttt{[true; 10000]}是一个有10,000个\texttt{bool}元素的数组，它们全被设为\texttt{true}：
+\begin{minted}{rust}
+    let mut sieve = [true; 10000];
+    for i in 2..100 {
+        if sieve[i] {
+            let mut j = i * i;
+            while j < 10000 {
+                sieve[j] = false;
+                j += i;
+            }
+        }
+    }
+
+    assert!(sieve[211]);
+    assert!(!sieve[9876]);
+\end{minted}
+ 
+\smallskip
+你将看到该语法用于固定大小的缓冲区：\texttt{[0u8; 1024]}会是一个1千字节的缓冲区，由零填充。Rust并没有未初始化数组的表示法。（一般来说，Rust保证
+代码无法访问任意形式的未初始化值。）
+
+\medskip
+数组的长度是其类型的一部分，并且在编译期就被固定下来了。若\texttt{n}是一个变量，你不能写\texttt{[true; n]}以获得一个有\texttt{n}个元素的数组。
+当你需要长度在运行时变化的数组时（你通常会这么做），请使用向量进行代替。
+
+\medskip
+你会希望在数组上看到的有用方法------遍历元素、搜索、排序、填充、过滤等等------都是作为切片上的方法提供的，而不是数组。不过当查询方法时Rust会隐式地
+将数组引用转换为切片，所以你可以直接在数组上调用任何属于切片的方法：
+\begin{minted}{rust}
+    let mut chaos = [3, 5, 4, 1, 2];
+    chaos.sort();
+    assert_eq!(chaos, [1, 2, 3, 4, 5]);
+\end{minted}
+ 
+\smallskip
+这里，\texttt{sort}方法实际是在切片上定义的，不过由于它通过引用获取操作数，Rust便隐式地生成指代整个数组的\texttt{\&mut [i32]}切片并将它
+转递给\texttt{sort}来操作。事实上，我们早前提及的\texttt{len}方法同样是一个切片方法。我们将在“\redtxt{切片}”中讨论更多细节。
+
+\medskip
+\subsection{向量}
+向量\texttt{Vec<T>}是一种元素类型为\texttt{T}的可变长数组，在堆上被分配。
+
+\medskip
+有数种创建向量的方法。最简单的是使用\texttt{vec!}宏，它给予我们看起来很像数组字面值的向量语法：
+\begin{minted}{rust}
+    let mut primes = vec![2, 3, 5, 7];
+    assert_eq!(primes.iter().product::<i32>(), 210);
+\end{minted}
+ 
+\smallskip
+但当然，这是一个向量，而不是数组，所以我们可以动态地为它增加元素：
+\begin{minted}{rust}
+    primes.push(11);
+    primes.push(13);
+    assert_eq!(primes.iter().product::<i32>(), 30030);
+\end{minted}
+ 
+\smallskip
+你也可以通过将给定值重复一定次数来构建向量，这里再次用到模仿数组字面值的语法：
+\begin{minted}{rust}
+    fn new_pixel_buffer(rows: usize, cols: usize) -> Vec<u8> {
+        vec![0; rows * cols]
+    }
+\end{minted}
+ 
+\smallskip
+\texttt{vec!}宏等价于调用\texttt{Vec::new}来创建一个新的空向量，并接着将元素推送至之上，这是另一种风格：
+\begin{minted}{rust}
+    let mut pal = Vec::new();
+    pal.push("step");
+    pal.push("on");
+    pal.push("no");
+    pal.push("pets");
+    assert_eq!(pal, vec!["step", "on", "no", "pets"]);
+\end{minted}
+ 
+\smallskip
+另一种可能性是由迭代器产生的值来构建一个向量：
+\begin{minted}{rust}
+    let v: Vec<i32> = (0..5).collect();
+    assert_eq!(v, [0, 1, 2, 3, 4]);
+\end{minted}
+ 
+\smallskip
+当使用\texttt{collect}时你通常需要提供相应类型（就像我们上面做的一样），因为它可以构建很多不同种类的集合，而不仅是向量。通过指定\texttt{v}的类型，
+我们便明确了我们想要的是哪种类型的集合。
+
+\medskip
+与数组相同，你可以在向量上使用切片方法：
+\begin{minted}{rust}
+    // 一个回文(palindrome)！
+    let mut palindrome = vec!["a man", "a plan", "a canal", "panama"];
+    palindrome.reverse();
+    // 合理却令人失望
+    assert_eq!(palindrome, vec!["panama", "a canal", "a plan", "a man"]);
+\end{minted}
+ 
+\smallskip
+这里，\texttt{reverse}方法实际上是定义在切片上的，不过该调用隐式地借用了向量的一个\texttt{\&mut [\&str]}切片，然后在该切片上调用\texttt{reverse}。
+
+\medskip
+\texttt{Vec}是Rust的一个基本类型------它几乎在任何需要动态大小的列表的地方被用到------所以有很多其它构建新向量或扩展现有向量的方法。我们将在
+\redtxt{第十六章}讨论它们。
+
+\medskip
+一个\texttt{Vec<T>}由三个值组成：一个指向存储元素的堆分配缓冲区的指针，其由\texttt{Vec<T>}创建并所有；缓冲区容积可储存的元素数量；以及其当前实际包含的数量
+（换句话说便是其长度）。当缓冲区增长到其容积时，为向量添加另一个元素会致使分配一个更大的缓冲区、将目前的内容复制进去、更新该向量的指针和容积以描述新缓冲区，并最终
+释放旧缓冲区。
+
+\medskip
+你若事先知晓向量将需要的元素个数，你可以调用\texttt{Vec::with\_capaticy}而非\texttt{Vec::new}来创建一个有着足够大缓冲区的向量，以一开始就可以容纳所有元素；
+接着，你就可以一个个地将元素添加至向量中同时避免造成任何重分配。\texttt{vec!}宏用到了类似的技巧，因为它知道最终的向量将包含多少元素。注意，这仅确定了向量的初始
+大小；你若超出了自己的估计，向量只会同往常一样扩大其存储空间。
+
+\medskip
+许多库函数试图找机会使用\texttt{Vec::with\_capaticy}而非\texttt{Vec::new}。比如说，在\texttt{collect}例子中，迭代器\texttt{0..5}事先
+知道它会产生五个值，然后\texttt{collect}函数利用这点来为它返回的向量预分配了正确的容积。我们会在\redtxt{第十五章}看到这是如何运作的。
+
+\medskip
+如同向量的\texttt{len}方法返回其目前包含的元素个数那样，它的\texttt{capacity}方法返回其在无需重分配的前提下可持有的元素数量：
+\begin{minted}{rust}
+    let mut v = Vec::with_capacity(2);
+    assert_eq!(v.len(), 0);
+    assert_eq!(v.capacity(), 2);
+
+    v.push(1);
+    v.push(2);
+    assert_eq!(v.len(), 2);
+    assert_eq!(v.capacity(), 2);
+
+    v.push(3);
+    assert_eq!(v.len(), 3);
+    // 不出意料会输出 “目前容积为4”
+    println!("capacity is now {}", v.capacity());
+\end{minted}
+ 
+\smallskip
+末尾打印的容积不保证正好为4，但至少为3，因为该向量持有三个值。
+
+\medskip
+你可以在向量中的任何地方插入与移除元素，不过这些操作会使受影响位置后面的元素向前或向后挪动，所以当向量很长时它们可能会比较慢。
+\begin{minted}{rust}
+    let mut v = vec![10, 20, 30, 40, 50];
+
+    // 将索引为3的元素变为35
+    v.insert(3, 35);
+    assert_eq!(v, [10, 20, 30, 35, 40, 50]);
+
+    // 移除索引1处的元素
+    v.remove(1);
+    assert_eq!(v, [10, 30, 35, 40, 50]);
+\end{minted}
+ 
+\smallskip
+你可以使用\texttt{pop}方法移除最后一个元素并返回之。更确切地说，要从一个\texttt{Vec<T>}弹出一个值，当该向量已为空时返回一个
+\texttt{Option<T>: None}，或者当其末元素为\texttt{v}时返回\texttt{Some(v)}：
+\begin{minted}{rust}
+    let mut v = vec!["Snow Puff", "Glass Gem"];
+    assert_eq!(v.pop(), Some("Glass Gem"));
+    assert_eq!(v.pop(), Some("Snow Puff"));
+    assert_eq!(v.pop(), None);
+\end{minted}
+ 
+\smallskip
+你可以使用\texttt{for}循环来迭代一个向量：
+\begin{minted}{rust}
+    // 获取我们的命令行参数并转为一个字符串向量
+    let languages: Vec<String> = std::env::args().skip(1).collect();
+    for l in languages {
+        println!("{}: {}", l,
+                 if l.len() % 2 == 0 {
+                     "functional"
+                 } else {
+                     "imperative"
+                 });
+    }
+\end{minted}
+ 
+\smallskip
+用编程语言列表来运行该程序的结果具有启发性：
+\begin{minted}{bash}
+    $ cargo run Lisp Scheme C C++ Fortran
+       Compiling proglangs v0.1.0 (/home/jimb/rust/proglangs)
+        Finished dev [unoptimized + debuginfo] target(s) in 0.36s
+         Running 'target/debug/proglangs Lisp Scheme C C++ Fortran'
+    Lisp: functional
+    Scheme: functional
+    C: imperative
+    C++: imperative
+    Fortran: imperative
+    $
+\end{minted}
+ 
+\smallskip
+最终，我们得到了术语\textbf{函数式语言}\textit{functional language}的满意定义。
+
+\medskip
+尽管\texttt{Vec}十分重要，但它是Rust中定义的一个普通类型，而未内建于语言之中。我们将在\redtxt{第二十二章}讨论实现这样的类型所需的技术。
+
+\medskip
+\subsection{切片}
