@@ -32,6 +32,25 @@
 \RequirePackage{booktabs}            % 表格线
 \RequirePackage{makecell}            % 表格内换行
 \RequirePackage{supertabular}        % 跨页表格
+\RequirePackage{hyperref}            % 超链接
+%
+%
+% hypererf
+%
+%
+\hypersetup{
+    CJKbookmarks=true, % 中文书签支持
+    colorlinks = true,
+    linkcolor = black,
+    breaklinks = true
+}
+%
+%
+% color
+%
+%
+\definecolor{myred}{rgb}{0.51,0.0,0.07}     % 红色
+\definecolor{boldred}{rgb}{0.51,0.094,0.1}  % 深红
 %
 %
 % fontspec
@@ -70,18 +89,17 @@
 % 定义
 %
 %
-\renewcommand{\thefigure}{\thechapter-\arabic{figure}}                       % 图片编号
-\renewcommand{\thetable}{\thechapter-\arabic{table}}                         % 表格编号
-\newcommand{\textittt}[1]{\textit{\texttt{#1}}}                              % 等宽斜体       
-\newcommand{\textbftt}[1]{\textbf{\texttt{#1}}}                              % 等宽粗体  
-\newcommand{\myred}{\color[rgb]{0.51,0.0,0.07}}                              % 红色
-\newcommand{\boldred}{\color[rgb]{0.51,0.094,0.1}}                           % 深红色
-\newcommand{\redtxt}[1]{{\myred{#1}}}                                        % 红色文本
-\newcommand{\reditxt}[1]{\redtxt{\textit{#1}}}                               % 红色斜体文本
-\newcommand{\boldredtxt}[1]{{\boldred{#1}}}                                  % 深红色文本
-\newcommand{\mksec}[1]{\section{\boldred{#1}}}
-\newcommand{\mkpar}[1]{\par\vspace{#1ex}}
-\newcommand{\mknote}[1]{\begin{center}
+\renewcommand{\thefigure}{\thechapter-\arabic{figure}}              % 图片编号格式指定
+\renewcommand{\thetable}{\thechapter-\arabic{table}}                % 表格编号格式指定
+\newcommand{\mkref}[2]{\hyperref[#1]{\redtxt{#2}}}                  % 创建label超链接
+\newcommand{\mkuref}[2]{\href{#1}{\redtxt{#2}}}                     % 创建url超链接
+\newcommand{\textittt}[1]{\textit{\texttt{#1}}}                     % 等宽斜体       
+\newcommand{\textbftt}[1]{\textbf{\texttt{#1}}}                     % 等宽粗体  
+\newcommand{\redtxt}[1]{{\textcolor{myred}{#1}}}                    % 红色文本
+\newcommand{\reditxt}[1]{\redtxt{\textit{#1}}}                      % 红色斜体文本
+\newcommand{\mksec}[1]{\textcolor{boldred}{\section{#1}}}           % 创建节标题
+\newcommand{\mkpar}[1]{\par\vspace{#1ex}}                           % 增加一个垂直间隔
+\newcommand{\mknote}[1]{\begin{center}                              % 创建一个note
     \fbox{\begin{minipage}{37em}
         \begin{center}
             \textbf{{\color[gray]{0.4}{\LARGE 批注}}}
