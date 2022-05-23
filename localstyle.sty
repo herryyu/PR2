@@ -33,6 +33,7 @@
 \RequirePackage{makecell}            % 表格内换行
 \RequirePackage{supertabular}        % 跨页表格
 \RequirePackage{hyperref}            % 超链接
+\RequirePackage{newunicodechar}      % 引入新unicode字符
 %
 %
 % hypererf
@@ -58,13 +59,20 @@
 %
 \setmainfont{Egyptian Slate Pro}
 \setmonofont{Courier New}
+\newfontface{\kannadafont}{KannadaSangamMN} % 添加Kannada字体
 %
 %
 % xeCJK
 %
 %
-\xeCJKsetup{AutoFallBack=true}  % 遇到生僻字用后备字体进行输出
+\xeCJKsetup{AutoFallBack=true} % 遇到生僻字用后备字体进行输出
 \setCJKmainfont{思源宋体 CN}
+%
+%
+% newunicodechar
+%
+%
+\newunicodechar{ಠ}{{\kannadafont ಠ}}
 %
 %
 % minted
