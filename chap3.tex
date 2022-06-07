@@ -810,8 +810,8 @@ Rust引用安全使用规则。
  
 \smallskip
 \texttt{t}的类型为\texttt{(i32, \&str)}，则\texttt{b}的类型为\texttt{Box<(i32, \&str)>}。\texttt{Box::new}该调用在堆上分配了足够的内存以
-容纳该元组。比如说，当\texttt{b}脱离作用域时，内存会立即被释放，除非\texttt{b}已经被\textbf{移动}\textit{moved}了---（待修订）。移动操作对于Rust处理在堆
-上分配的值是至关重要的；我们将在\mkref{CHP4}{第四章}阐释这些细节。
+容纳该元组。比如说，当\texttt{b}脱离作用域时，内存会立即被释放，除非\texttt{b}已经被\textbf{移动}\textit{moved}了---（待修订）。移动操作对于Rust
+处理在堆上分配的值是至关重要的；我们将在\mkref{CHP4}{第四章}阐释这些细节。
 
 \medskip
 \subsection{裸指针}
@@ -1219,4 +1219,159 @@ Rust的字符串是Unicode字符的序列，但是它们在内存中的存储方
 \end{figure}
 
 \smallskip
-一个\texttt{String}包含一个持有UTF-8文本的可变长缓冲区。而缓冲区被分配在堆上，所以它可根据需要或请求调整其缓冲区大小。在这个例子中，
+一个\texttt{String}包含一个持有UTF-8文本的可变长缓冲区。而缓冲区被分配在堆上，所以它可根据需要或请求调整其缓冲区大小。在这个例子中，\texttt{noodles}是所有
+一个八字节缓冲区的\texttt{String}，其中有七个字节正被使用。你可将\texttt{String}视作一个\texttt{Vec<u8>}，其确保能容纳格式良好的UTF-8；实际上，这便是
+\texttt{String}的实现方式。
+
+\medskip
+\texttt{\&str}（读作"stir"或"字符串切片"）为一个引用，其指向由其他人所有的一连串UTF-8文本：它“借用”了文本。在此例中，\texttt{oodles}是一个指向属于
+\texttt{noodles}的文本的最后六字节的\texttt{\&str}，所以它表示文本"oodles"。与其它切片引用相同，\texttt{\&str}是一个胖指针，同时包含实际数据地址以及
+其长度。你可将\texttt{\&str}视作一个确保能容纳格式良好的UTF-8的\texttt{\&[u8]}。
+
+\medskip
+字符串字面值是一个指向预分配文本的\texttt{\&str}，通常与程序的机器码一同被存储在只读内存中。在先前的例子中，\texttt{poodles}为一个字符串字面值，指向程序开始
+执行时创建的7个字节，并持续到程序退出为止。
+
+\medskip
+\texttt{String}或\texttt{\&str}的\texttt{len()}方法返回其长度。长度以字节为单位进行计量，而不是字符：
+\begin{minted}{rust}
+    assert_eq!("ಠ_ಠ".len(), 7);
+    assert_eq!("ಠ_ಠ".chars(), 3);
+\end{minted}
+
+\smallskip
+你是无法修改一个\texttt{\&str}的：
+\begin{minted}{rust}
+    let mut s = "hello";
+    s[0] = 'c';     // 错误：'&str'不可修改
+    s.push('\n');   // 错误：找不到引用'&str'名为'push'的方法
+\end{minted}
+
+\smallskip
+对于在运行时创建新字符串，请使用\texttt{String}。
+
+\medskip
+类型\texttt{\&mut str}确实存在，不过它并不十分有用，因为对UTF-8的几乎任何操作会改变其总字节长度，并且切片无法对其所指物进行重分配。事实上，
+\texttt{\&mut str}上唯一可用的操作是\texttt{make\_ascii\_uppercase}与\texttt{make\_ascii\_lowercase}，根据定义，它们对文本进行原地修改且仅影响
+单字节字符。
+
+\subsection{String}
+\texttt{\&str}很像\texttt{\&[T]}：一个指向某些数据的胖指针。\texttt{String}则类似于\texttt{Vec<T>}，请看 \mkref{TABLE3-11}{表 3-11}：
+
+\smallskip
+\begin{table}[h]
+    \small
+    \caption{Vec<T>与String的比较}\label{TABLE3-11}
+    \begin{tabularx}{\linewidth}{p{250pt} X X}
+        \toprule
+         & \textbf{Vec<T>} & \textbf{String}\\
+        \midrule
+        自动释放缓冲区 & 是 & 是 \\
+        可增长 & 是 & 是 \\
+        类型相关函数\texttt{::new()}与\texttt{::with\_capacity()} & 有 & 有 \\
+        \texttt{.reverse()}与\texttt{.capacity()}方法 & 有 & 有 \\
+        \texttt{.push()}与\texttt{.pop()}方法 & 有 & 有 \\
+        范围语法\texttt{v[start...stop]} & 有，返回\texttt{\&[T]} & 有，返回\texttt{\&str} \\
+        自动转换 & \texttt{\&Vec<T>}到\texttt{\&[T]} & \texttt{\&String}到\texttt{\&str} \\
+        方法继承 & 来自\texttt{\&[T]} & 来自\texttt{\&str} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\smallskip
+就像一个\texttt{Vec}那样，每个\texttt{String}有着自己的堆分配缓冲区，其不会与任何其它\texttt{String}共享。当一个\texttt{String}变量脱离作用域时，缓冲区
+会自动释放，除非该\texttt{String}已被移动了。
+
+\medskip
+有几个创建\texttt{String}s的方法：
+\begin{itemize}
+    \item \texttt{.to\_string}方法将\texttt{\&str}转换为\texttt{String}。这会复制该字符串：
+          \begin{minted}{rust}
+              let error_message = "too many pets".to_string();
+          \end{minted}
+    
+          \smallskip
+          方法\texttt{.to\_owned()}的效果相同，并且你会看到它以同样的方式被使用。该方法对一些其它类型同样有效，我们会在\mkref{CHP13}{第十三章}谈到。
+    \item \texttt{format!}宏的工作原理就像是\texttt{println!()}，不同之处在于它返回一个新\texttt{String}而非将文本写入标准输出，并且它不会自动地在末尾
+          添加一个新行：
+          \begin{minted}{rust}
+              assert_eq!(format!("{}°{:02}' {:02}'' N", 24, 5, 23),
+                         "24°05' 23'' N".to_string());
+          \end{minted}
+  
+          \smallskip
+    \item 字符串的数组、切片以及向量有两个方法，\texttt{.concat()}和\texttt{.join(sep)}，它们将多个字符串组合为一个新\texttt{String}：
+          \begin{minted}{rust}
+              let bits = vec!["veni", "vidi", "vici"];
+              assert_eq!(bits.concat(), "venividivici");
+              assert_eq!(bits.join(", "), "veni, vidi, vici");
+          \end{minted}
+
+          \smallskip
+\end{itemize}
+
+\smallskip
+有时会出现该选择使用哪种类型的问题：\texttt{\&str}还是\texttt{String}。\mkref{CHP5}{第五章}详细讨论了此问题。就目前而言我们只需知道，一个\texttt{\&str}
+可指代任何字符串上的任意切片，不管它是一个字符串字面值（存储在可执行程序中）或一个\texttt{String}（在运行时被分配与释放）。这意味着，这意味着当调用者应被允许传递
+任意一种类型的字符串时，\texttt{\&str}更适合用作函数参数。
+
+\medskip
+\subsection{字符串的使用}
+字符串支持\texttt{==}与\texttt{!=}操作符。当两个字符串包含顺序一致的相同字符时，它们便相等（不考虑它们是否指向内存中的相同位置）：
+\begin{minted}{rust}
+    assert!("ONE".to_lowercase() == "one");
+\end{minted}
+
+\smallskip
+字符串也支持比较运算符\texttt{<}、\texttt{<=}、\texttt{>}以及\texttt{>=}，并且你可以在在线文档的"\texttt{str}（原始类型）"或
+"\texttt{std::str}"模块下找到许多有用的方法与函数（或直接跳转到\mkref{CHP17}{第十七章}）。以下有几个示例：
+\begin{minted}{rust}
+    assert!("peanut".contains("nut"));
+    assert_eq!("ಠ_ಠ".replace("ಠ", @), @_@);
+    assert_eq!("   clean\n".trim(), "clean");
+
+    for word in "veni, vidi, vici".split(", ") {
+        assert!(word.starts_with("v"));
+    }
+\end{minted}
+
+\smallskip
+请记住，鉴于Unicode的性质，简单的逐字符比较\textbf{并不}总能给出你期望的答案。打个比方，Rust字符串\texttt{"th{\textbackslash}u\{e9\}"}与
+\texttt{"the{\textbackslash}u\{301\}"}均为thé的Unicode表示，其为法语中的"tea"。Unicode要求它们应均以同样的方式被显示与处理，然而Rust将它们视为两个
+截然不同的字符串。同样地，Rust中类似\texttt{<}的排序运算符使用了一种基于字符码位值的字典序排序。这种排序仅在某些时候与用户的语言与文化中用于文本的排序相类似。我们
+将于\mkref{CHP17}{第十七章}详细讨论这些问题。
+
+\medskip
+\subsection{其它类似于字符串的类型}
+Rust保证了字符串是合法的UTF-8编码。有时候一个程序确实需要能够处理\textbf{非}有效Unicode编码的字符串。这通常在Rust程序需要与其它一些不强制实行任何这样的规则的
+系统交互操作时发生。比如说，在大多数操作系统中，很容易以一个非合法Unicode编码的文件名来创建文件。那么当Rust程序遇到这种文件名该怎么办呢？
+
+\medskip
+Rust的解决方案是提供几个类似于字符串的类型以应对这些情形：
+\begin{itemize}
+    \item 坚持将\texttt{String}与\texttt{\&str}用于Unicode文本。
+    \item 在处理文件名时，使用\texttt{std::path::PathBuf}与\texttt{\&Path}进行替代。
+    \item 在处理完全非UTF-8编码的二进制数据时，使用\texttt{Vec<u8>}与\texttt{\&[u8]}。
+    \item 在处理由操作系统提供的原生形式的环境变量名与命令行参数时，使用\texttt{OsString}与\texttt{\&OsStr}。
+    \item 在与使用以null结尾字符串的C库交互操作时，使用\texttt{std::ffi::CString}与\texttt{\&CStr}。
+\end{itemize}
+
+\bigskip
+\mksec{类型别名}
+关键字\texttt{type}可像C++中的\texttt{typedef}一样用来为现有类型声明一个新名字：
+\begin{minted}{rust}
+    type Bytes = vec<u8>;
+\end{minted}
+
+\smallskip
+我们在这里声明的\texttt{Bytes}类型是对这种特指\texttt{Vec}类型的简称：
+\begin{minted}{rust}
+    fn decode(data: &Bytes) {
+        ...
+    }
+\end{minted}
+
+\bigskip
+\mksec{基础知识以外的内容}
+类型是Rust的一个核心部分。我们将贯穿本书，继续对类型进行讨论，并引入新的类型。特别是，Rust的用户自定义类型给予该门语言丰富的味道，因为这便是方法的定义方式。有
+三种用户定义类型，我们将在三个连续章节介绍它们：\mkref{CHP9}{第九章}的结构体、\mkref{CHP10}{第十章}的枚举以及\mkref{CHP11}{第十一章}的特型。
